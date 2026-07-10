@@ -12,7 +12,7 @@
         }
 
         :root {
-            --primary: #f26522; /* Pann Satt Lann orange */
+            --primary: #f26522;
             --bg-light: #f9f9f9;
             --text-dark: #333;
             --text-muted: #666;
@@ -35,7 +35,6 @@
             padding: 20px;
         }
 
-        /* Top Bar & Header */
         header {
             background: var(--white);
             padding: 20px 0;
@@ -77,7 +76,6 @@
             font-weight: 600;
         }
 
-        /* Section Titles */
         .section-title {
             font-size: 1.5rem;
             border-left: 5px solid var(--primary);
@@ -86,7 +84,6 @@
             color: var(--text-dark);
         }
 
-        /* Popular Books Grid */
         .popular-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -110,8 +107,8 @@
 
         .book-card img {
             width: 100%;
-            height: 200px;
-            object-fit: cover;
+            height: 250px;
+            object-fit: contain;
             border-radius: 5px;
             margin-bottom: 15px;
             background: #f0f0f0;
@@ -141,7 +138,6 @@
             font-weight: 600;
         }
 
-        /* Authors List (Grid) */
         .authors-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -172,7 +168,6 @@
             color: var(--text-muted);
         }
 
-        /* Modal */
         .modal {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -211,7 +206,6 @@
             border-bottom: 1px solid var(--border);
         }
 
-        /* Responsive */
         @media (max-width: 992px) {
             .popular-grid, .authors-grid { grid-template-columns: repeat(3, 1fr); }
         }
@@ -264,28 +258,28 @@
     let libraryData = [];
     const popularBooks = [
         {
-            title: "အချစ်ရူးကြီးရူးတော့သည်",
+            title: "အများနှင့်မသက်ဆိုင်သောသူ",
             author: "မင်းလူ",
-            cover: "https://www.pannsattlann.com/wp-content/uploads/2026/05/beauty-75x75.png",
-            link: "https://t.me/TheBookR/967?single"
+            cover: "https://www.pannsattlann.com/wp-content/uploads/2026/03/မင်းလူ-300x300.png",
+            link: "https://t.me/TheBookR/1233?single"
         },
         {
-            title: "ဧကရီဖွားစော",
-            author: "မြသန်းတင့်",
-            cover: "https://www.pannsattlann.com/wp-content/uploads/2026/06/ဧရာ၀တီ-75x75.png",
-            link: "https://t.me/TheBookR/206?single"
-        },
-        {
-            title: "ဤမြေမှသည်",
-            author: "တက္ကသိုလ်ဘုန်းနိုင်",
-            cover: "https://www.pannsattlann.com/wp-content/uploads/2026/06/နိရယဘုံ-75x75.png",
-            link: "https://t.me/TheBookR/740?single"
-        },
-        {
-            title: "ကြယ်ကြွေတို့ရဲ့အတောင်ပံ",
+            title: "အမှတ်တရ",
             author: "ဂျူး",
-            cover: "https://www.pannsattlann.com/wp-content/uploads/2026/06/ပါရီရုပ်ပုံ-1-75x75.png",
+            cover: "https://www.pannsattlann.com/wp-content/uploads/2020/10/amhattaya-75x75.png",
             link: "https://t.me/TheBookR/394?single"
+        },
+        {
+            title: "အမည်မဖော်လိုသူအချစ်",
+            author: "မင်းလူ",
+            cover: "https://www.pannsattlann.com/wp-content/uploads/2025/09/1-11-300x300.png",
+            link: "https://t.me/TheBookR/1195?single"
+        },
+        {
+            title: "အော်ဆွေး",
+            author: "မင်းလူ",
+            cover: "https://www.pannsattlann.com/wp-content/uploads/2025/08/1-29-300x300.png",
+            link: "https://t.me/TheBookR/1169?single"
         }
     ];
 
