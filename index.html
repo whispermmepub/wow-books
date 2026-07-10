@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Whisper Library - Wooden Bookshelf</title>
+    <title>Whisper Library - Modern Myanmar E-books</title>
     <style>
         @font-face {
             font-family: 'PyidaungsuMM';
@@ -12,154 +12,171 @@
         }
 
         :root {
-            --shelf-wood: #4d2c19;
-            --shelf-shadow: #2a180d;
-            --primary: #f39c12;
-            --bg-dark: #1a1a1a;
-            --text-main: #f0f0f0;
-            --text-dim: #ccc;
+            --primary: #f26522; /* Pann Satt Lann orange */
+            --bg-light: #f9f9f9;
+            --text-dark: #333;
+            --text-muted: #666;
+            --border: #eee;
+            --white: #ffffff;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
             font-family: 'PyidaungsuMM', sans-serif;
-            background: var(--bg-dark);
-            background-image: radial-gradient(circle, #2c2c2c 0%, #1a1a1a 100%);
-            color: var(--text-main);
-            min-height: 100vh;
+            background: var(--bg-light);
+            color: var(--text-dark);
+            line-height: 1.6;
         }
 
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            padding: 40px 20px;
+            padding: 20px;
         }
 
+        /* Top Bar & Header */
         header {
+            background: var(--white);
+            padding: 20px 0;
+            border-bottom: 3px solid var(--primary);
             text-align: center;
-            margin-bottom: 60px;
-        }
-
-        h1 {
-            font-size: 3rem;
-            color: var(--primary);
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-            margin-bottom: 10px;
-        }
-
-        .subtitle {
-            color: var(--text-dim);
-            font-size: 1.2rem;
             margin-bottom: 30px;
         }
 
-        .search-wrapper {
+        .logo h1 {
+            color: var(--primary);
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .search-box {
             max-width: 600px;
-            margin: 0 auto 50px;
-            position: relative;
+            margin: 20px auto;
+            display: flex;
+            gap: 10px;
         }
 
-        .search-wrapper input {
-            width: 100%;
-            padding: 15px 25px 15px 50px;
-            border-radius: 10px;
-            background: #333;
-            border: 2px solid var(--shelf-wood);
-            color: white;
-            font-size: 1rem;
-            outline: none;
+        .search-box input {
+            flex: 1;
+            padding: 12px 20px;
+            border: 1px solid var(--border);
+            border-radius: 5px;
             font-family: inherit;
+            outline: none;
         }
 
-        .search-icon {
-            position: absolute;
-            left: 15px;
-            top: 50%;
-            transform: translateY(-50%);
+        .search-box button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0 25px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        /* Section Titles */
+        .section-title {
+            font-size: 1.5rem;
+            border-left: 5px solid var(--primary);
+            padding-left: 15px;
+            margin: 40px 0 20px;
+            color: var(--text-dark);
+        }
+
+        /* Popular Books Grid */
+        .popular-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .book-card {
+            background: var(--white);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+
+        .book-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .book-card img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            background: #f0f0f0;
+        }
+
+        .book-card h3 {
+            font-size: 1rem;
+            margin-bottom: 5px;
+            height: 2.4em;
+            overflow: hidden;
+        }
+
+        .book-card p {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-bottom: 15px;
+        }
+
+        .read-btn {
+            display: inline-block;
+            background: var(--primary);
+            color: white;
+            text-decoration: none;
+            padding: 8px 20px;
+            border-radius: 5px;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        /* Authors List (Grid) */
+        .authors-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+        }
+
+        .author-item {
+            background: var(--white);
+            padding: 15px;
+            border-radius: 5px;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .author-item:hover {
+            border-color: var(--primary);
             color: var(--primary);
         }
 
-        /* Bookshelf Layout */
-        .bookshelf {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 40px 20px;
-            padding: 20px 0;
+        .author-count {
+            background: #f0f0f0;
+            padding: 2px 10px;
+            border-radius: 15px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
         }
-
-        .author-book {
-            height: 220px;
-            background: #8e44ad; /* Default book color */
-            border-radius: 4px 15px 15px 4px;
-            position: relative;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-            text-align: center;
-            box-shadow: 
-                -5px 5px 10px rgba(0,0,0,0.5),
-                inset 10px 0 10px rgba(0,0,0,0.2);
-            border-left: 8px solid rgba(0,0,0,0.3);
-        }
-
-        .author-book:hover {
-            transform: translateY(-10px) rotate(-2deg);
-            box-shadow: -10px 15px 20px rgba(0,0,0,0.6);
-        }
-
-        /* Bookshelf Shelf Effect */
-        .shelf-row {
-            position: relative;
-            margin-bottom: 60px;
-            padding-bottom: 15px;
-            border-bottom: 25px solid var(--shelf-wood);
-            box-shadow: 0 10px 15px rgba(0,0,0,0.5);
-        }
-
-        .shelf-row::after {
-            content: '';
-            position: absolute;
-            bottom: -25px;
-            left: 0;
-            width: 100%;
-            height: 10px;
-            background: var(--shelf-shadow);
-        }
-
-        .book-title {
-            font-size: 1.1rem;
-            font-weight: 700;
-            color: #fff;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
-            margin-bottom: 10px;
-            word-break: break-word;
-        }
-
-        .book-count {
-            font-size: 0.8rem;
-            background: rgba(255,255,255,0.2);
-            padding: 2px 8px;
-            border-radius: 10px;
-        }
-
-        /* Colors for variety */
-        .color-1 { background: #c0392b; }
-        .color-2 { background: #2980b9; }
-        .color-3 { background: #27ae60; }
-        .color-4 { background: #d35400; }
-        .color-5 { background: #2c3e50; }
-        .color-6 { background: #16a085; }
 
         /* Modal */
         .modal {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9);
+            background: rgba(0,0,0,0.7);
             z-index: 1000;
             display: none;
             justify-content: center;
@@ -168,134 +185,141 @@
         }
 
         .modal-content {
-            background: #2c3e50;
+            background: var(--white);
             width: 100%;
             max-width: 600px;
-            border-radius: 15px;
+            border-radius: 10px;
             padding: 30px;
             position: relative;
             max-height: 80vh;
             overflow-y: auto;
-            border: 5px solid var(--shelf-wood);
         }
 
         .close-modal {
             position: absolute;
             top: 15px; right: 15px;
-            background: none; border: none;
-            color: #fff;
-            font-size: 2rem;
+            font-size: 1.5rem;
             cursor: pointer;
+            color: var(--text-muted);
         }
 
-        .modal-author {
-            font-size: 2rem;
-            margin-bottom: 20px;
-            color: var(--primary);
-            text-align: center;
-        }
-
-        .book-item {
+        .book-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 12px;
-            background: rgba(255,255,255,0.05);
-            border-radius: 8px;
-            margin-bottom: 10px;
-        }
-
-        .download-btn {
-            background: var(--primary);
-            color: #000;
-            text-decoration: none;
-            padding: 6px 15px;
-            border-radius: 5px;
-            font-weight: 700;
-            font-size: 0.9rem;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
         }
 
         /* Responsive */
         @media (max-width: 992px) {
-            .bookshelf { grid-template-columns: repeat(3, 1fr); }
+            .popular-grid, .authors-grid { grid-template-columns: repeat(3, 1fr); }
         }
         @media (max-width: 768px) {
-            .bookshelf { grid-template-columns: repeat(2, 1fr); }
-            h1 { font-size: 2rem; }
+            .popular-grid, .authors-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 480px) {
+            .popular-grid, .authors-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <header>
+<header>
+    <div class="logo">
         <h1>Whisper Library</h1>
-        <p class="subtitle">စင်ပေါ်က စာအုပ်များ</p>
-        
-        <div class="search-wrapper">
-            <span class="search-icon">🔍</span>
-            <input type="text" id="search-input" placeholder="စာရေးဆရာ သို့မဟုတ် စာအုပ်အမည် ရှာပါ...">
-        </div>
-    </header>
+        <p>ဉာဏ်ပညာနဲ့ ဆင်ယင်ထားတဲ့ အလှတရား</p>
+    </div>
+    <div class="search-box">
+        <input type="text" id="search-input" placeholder="စာအုပ်ရှာဖွေရန်........">
+        <button>ရှာမယ်</button>
+    </div>
+</header>
 
-    <div id="shelf-container">
-        <!-- Rows will be injected here -->
+<div class="container">
+    <h2 class="section-title">လူကြိုက်များသော စာအုပ်များ (Popular Books)</h2>
+    <div class="popular-grid" id="popular-books">
+        <!-- Popular books will be loaded here -->
     </div>
 
-    <footer style="text-align: center; padding: 40px; color: #666;">
-        <p>&copy; 2026 Whisper Library. All rights reserved.</p>
+    <h2 class="section-title">စာရေးဆရာများ (Authors)</h2>
+    <div class="authors-grid" id="authors-list">
+        <!-- Authors will be loaded here -->
+    </div>
+
+    <footer style="text-align: center; padding: 60px 0; color: var(--text-muted); border-top: 1px solid var(--border); margin-top: 50px;">
+        <p>&copy; 2026 Whisper Library | Inspiried by Pann Satt Lann</p>
     </footer>
 </div>
 
 <div class="modal" id="book-modal">
     <div class="modal-content">
-        <button class="close-modal" id="close-modal">&times;</button>
-        <h2 class="modal-author" id="modal-author-name">Author Name</h2>
+        <span class="close-modal" id="close-modal">&times;</span>
+        <h2 id="modal-author-name" style="color: var(--primary); margin-bottom: 20px;">Author Name</h2>
         <div id="modal-book-list"></div>
     </div>
 </div>
 
 <script>
     let libraryData = [];
-    const colors = ['color-1', 'color-2', 'color-3', 'color-4', 'color-5', 'color-6'];
+    const popularBooks = [
+        {
+            title: "အချစ်ရူးကြီးရူးတော့သည်",
+            author: "မင်းလူ",
+            cover: "https://www.pannsattlann.com/wp-content/uploads/2026/05/beauty-75x75.png",
+            link: "https://t.me/TheBookR/967?single"
+        },
+        {
+            title: "ဧကရီဖွားစော",
+            author: "မြသန်းတင့်",
+            cover: "https://www.pannsattlann.com/wp-content/uploads/2026/06/ဧရာ၀တီ-75x75.png",
+            link: "https://t.me/TheBookR/206?single"
+        },
+        {
+            title: "ဤမြေမှသည်",
+            author: "တက္ကသိုလ်ဘုန်းနိုင်",
+            cover: "https://www.pannsattlann.com/wp-content/uploads/2026/06/နိရယဘုံ-75x75.png",
+            link: "https://t.me/TheBookR/740?single"
+        },
+        {
+            title: "ကြယ်ကြွေတို့ရဲ့အတောင်ပံ",
+            author: "ဂျူး",
+            cover: "https://www.pannsattlann.com/wp-content/uploads/2026/06/ပါရီရုပ်ပုံ-1-75x75.png",
+            link: "https://t.me/TheBookR/394?single"
+        }
+    ];
 
     async function init() {
         try {
             const response = await fetch('data.json');
             libraryData = await response.json();
-            renderShelf(libraryData);
+            renderPopular();
+            renderAuthors(libraryData);
         } catch (error) {
             console.error('Error:', error);
         }
     }
 
-    function renderShelf(data) {
-        const container = document.getElementById('shelf-container');
-        container.innerHTML = '';
-        
-        // Group by 4
-        for (let i = 0; i < data.length; i += 4) {
-            const rowData = data.slice(i, i + 4);
-            const rowDiv = document.createElement('div');
-            rowDiv.className = 'shelf-row';
-            
-            const shelfDiv = document.createElement('div');
-            shelfDiv.className = 'bookshelf';
-            
-            rowData.forEach((author, index) => {
-                const bookDiv = document.createElement('div');
-                bookDiv.className = `author-book ${colors[Math.floor(Math.random() * colors.length)]}`;
-                bookDiv.innerHTML = `
-                    <div class="book-title">${author.author}</div>
-                    <div class="book-count">${author.books.length} အုပ်</div>
-                `;
-                bookDiv.onclick = () => showBooks(author);
-                shelfDiv.appendChild(bookDiv);
-            });
-            
-            rowDiv.appendChild(shelfDiv);
-            container.appendChild(rowDiv);
-        }
+    function renderPopular() {
+        const grid = document.getElementById('popular-books');
+        grid.innerHTML = popularBooks.map(book => `
+            <div class="book-card">
+                <img src="${book.cover}" alt="${book.title}">
+                <h3>${book.title}</h3>
+                <p>${book.author}</p>
+                <a href="${book.link}" target="_blank" class="read-btn">ဖတ်ရန်</a>
+            </div>
+        `).join('');
+    }
+
+    function renderAuthors(data) {
+        const grid = document.getElementById('authors-list');
+        grid.innerHTML = data.map(author => `
+            <div class="author-item" onclick='showBooks(${JSON.stringify(author).replace(/'/g, "&apos;")})'>
+                <span>${author.author}</span>
+                <span class="author-count">${author.books.length} အုပ်</span>
+            </div>
+        `).join('');
     }
 
     function showBooks(author) {
@@ -303,9 +327,9 @@
         document.getElementById('modal-author-name').textContent = author.author;
         const list = document.getElementById('modal-book-list');
         list.innerHTML = author.books.map(b => `
-            <div class="book-item">
+            <div class="book-row">
                 <span>${b.title}</span>
-                <a href="${b.link}" target="_blank" class="download-btn">ဖတ်ရန်</a>
+                <a href="${b.link}" target="_blank" class="read-btn" style="padding: 5px 15px; font-size: 0.8rem;">ဖတ်ရန်</a>
             </div>
         `).join('');
         modal.style.display = 'flex';
@@ -318,7 +342,7 @@
             a.author.toLowerCase().includes(query) || 
             a.books.some(b => b.title.toLowerCase().includes(query))
         );
-        renderShelf(filtered);
+        renderAuthors(filtered);
     });
 
     document.getElementById('close-modal').onclick = () => {
