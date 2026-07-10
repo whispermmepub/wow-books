@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Whisper Library - Wooden Bookshelf</title>
+    <title>Whisper Library - Nordic Bookshelf</title>
     <style>
         @font-face {
             font-family: 'PyidaungsuMM';
@@ -12,11 +12,26 @@
         }
 
         :root {
-            --shelf-color: #5d4037;
-            --shelf-light: #8d6e63;
-            --bg-color: #f4f1ea;
-            --text-dark: #3e2723;
-            --primary: #d84315;
+            --nord0: #2e3440;
+            --nord1: #3b4252;
+            --nord2: #434c5e;
+            --nord3: #4c566a;
+            --nord4: #d8dee9;
+            --nord5: #e5e9f0;
+            --nord6: #eceff4;
+            --nord7: #8fbcbb;
+            --nord8: #88c0d0;
+            --nord9: #81a1c1;
+            --nord10: #5e81ac;
+            --nord11: #bf616a;
+            --nord12: #d08770;
+            --nord13: #ebcb8b;
+            --nord14: #a3be8c;
+            --nord15: #b48ead;
+            
+            --shelf-color: #434c5e;
+            --primary: #88c0d0;
+            --bg-color: #eceff4;
             --white: #ffffff;
         }
 
@@ -25,157 +40,153 @@
         body {
             font-family: 'PyidaungsuMM', sans-serif;
             background-color: var(--bg-color);
-            color: var(--text-dark);
-            background-image: url('https://www.transparenttextures.com/patterns/paper.png');
+            color: var(--nord0);
         }
 
         header {
             text-align: center;
-            padding: 30px 20px;
-            background: rgba(255, 255, 255, 0.7);
-            border-bottom: 2px solid var(--shelf-color);
-            margin-bottom: 40px;
-            backdrop-filter: blur(5px);
+            padding: 40px 20px;
+            background: var(--nord0);
+            color: var(--nord6);
+            border-bottom: 4px solid var(--nord10);
+            margin-bottom: 50px;
         }
 
         .logo h1 {
-            font-size: 2rem;
-            color: var(--shelf-color);
-            margin-bottom: 10px;
+            font-size: 2.2rem;
+            margin-bottom: 15px;
+            letter-spacing: 1px;
         }
 
-        /* Social Links from previous repo */
         .social-links {
             display: flex;
             justify-content: center;
-            gap: 10px;
-            margin-top: 15px;
+            gap: 12px;
+            margin-bottom: 25px;
             flex-wrap: wrap;
         }
 
         .social-link {
             display: inline-flex;
             align-items: center;
-            gap: 6px;
-            padding: 6px 12px;
-            border-radius: 8px;
-            font-size: 0.75rem;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.8rem;
             text-decoration: none;
             transition: all 0.3s ease;
             font-weight: 600;
+            color: var(--nord6);
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
         }
-
-        .social-link.facebook { color: #ffffff; background: #1877f2; }
-        .social-link.youtube { color: #ffffff; background: #ff0000; }
-        .social-link.twitter { color: #ffffff; background: #000000; }
-        .social-link.telegram { color: #ffffff; background: #0088cc; }
 
         .social-link:hover {
+            background: var(--nord10);
             transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-            opacity: 0.9;
         }
 
-        .social-icon { width: 16px; height: 16px; fill: currentColor; }
+        .social-icon { width: 18px; height: 18px; fill: currentColor; }
 
         .search-box {
-            max-width: 400px;
-            margin: 20px auto 0;
+            max-width: 500px;
+            margin: 0 auto;
             display: flex;
         }
 
         .search-box input {
             flex: 1;
-            padding: 8px 15px;
-            border: 2px solid var(--shelf-color);
-            border-right: none;
-            border-radius: 4px 0 0 4px;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 25px 0 0 25px;
             font-family: inherit;
             outline: none;
-            font-size: 0.9rem;
+            font-size: 0.95rem;
+            background: var(--nord6);
         }
 
         .search-box button {
-            background: var(--shelf-color);
+            background: var(--nord10);
             color: white;
             border: none;
-            padding: 0 15px;
-            border-radius: 0 4px 4px 0;
+            padding: 0 25px;
+            border-radius: 0 25px 25px 0;
             cursor: pointer;
-            font-weight: 600;
+            font-weight: 700;
         }
 
         .container {
-            max-width: 1000px;
+            max-width: 1100px;
             margin: 0 auto;
-            padding: 0 20px 60px;
+            padding: 0 20px 80px;
         }
 
         /* Bookshelf Grid */
         .shelf-row {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 15px;
-            padding-bottom: 10px;
-            border-bottom: 12px solid var(--shelf-color);
-            box-shadow: 0 10px 10px -5px rgba(0,0,0,0.2);
-            margin-bottom: 40px;
+            gap: 25px;
+            padding-bottom: 15px;
+            border-bottom: 15px solid var(--shelf-color);
+            margin-bottom: 60px;
             position: relative;
         }
 
-        .shelf-row::after {
-            content: '';
-            position: absolute;
-            bottom: -18px;
-            left: 0;
-            width: 100%;
-            height: 6px;
-            background: var(--shelf-light);
-            border-radius: 0 0 4px 4px;
+        .author-card {
+            background: var(--white);
+            border-radius: 8px 8px 0 0;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            height: 180px; /* Portrait height */
+            position: relative;
         }
 
-        .book-spine {
-            background: var(--white);
-            border-left: 4px solid var(--primary);
-            height: 110px;
+        .author-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 12px 20px rgba(0,0,0,0.1);
+        }
+
+        .author-img {
+            width: 100%;
+            height: 130px;
+            object-fit: cover;
+            background: var(--nord4);
+        }
+
+        .author-info {
             padding: 10px;
+            text-align: center;
+            background: var(--white);
+            flex: 1;
             display: flex;
             flex-direction: column;
             justify-content: center;
-            align-items: center;
-            text-align: center;
-            cursor: pointer;
-            transition: transform 0.2s;
-            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
-            border-radius: 2px 4px 4px 2px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .book-spine:hover {
-            transform: translateY(-8px) scale(1.05);
-            z-index: 10;
         }
 
         .author-name {
-            font-size: 0.8rem;
+            font-size: 0.9rem;
             font-weight: 700;
-            line-height: 1.2;
-            margin-bottom: 3px;
-            color: #333;
+            color: var(--nord0);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
-        .book-count {
-            font-size: 0.65rem;
-            color: var(--primary);
-            font-weight: 600;
+        .book-count-badge {
+            font-size: 0.7rem;
+            color: var(--nord10);
+            font-weight: 700;
         }
 
-        /* Modal */
+        /* Original Expand Design (Modal) */
         .modal {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8);
+            background: rgba(46, 52, 64, 0.9);
             z-index: 1000;
             display: none;
             justify-content: center;
@@ -184,53 +195,110 @@
         }
 
         .modal-content {
-            background: #fff;
+            background: var(--nord0);
             width: 100%;
-            max-width: 500px;
-            border-radius: 8px;
-            padding: 25px;
+            max-width: 650px;
+            border-radius: 16px;
+            padding: 30px;
             position: relative;
-            max-height: 80vh;
+            max-height: 85vh;
             overflow-y: auto;
-            border: 4px solid var(--shelf-color);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: var(--nord6);
         }
 
         .close-modal {
             position: absolute;
-            top: 10px; right: 15px;
-            font-size: 1.5rem;
+            top: 20px; right: 25px;
+            font-size: 2rem;
             cursor: pointer;
+            color: var(--nord4);
         }
 
-        .book-row {
+        .modal-header {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .modal-author-img {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid var(--nord10);
+        }
+
+        .modal-author-name {
+            font-size: 1.8rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--nord8), var(--nord15));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .book-list-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .book-item {
+            background: rgba(255,255,255,0.05);
+            padding: 15px 20px;
+            border-radius: 12px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 10px 0;
-            border-bottom: 1px solid #eee;
+            border: 1px solid rgba(255,255,255,0.05);
+            transition: all 0.2s;
+        }
+
+        .book-item:hover {
+            background: rgba(255,255,255,0.1);
+            transform: translateX(5px);
+        }
+
+        .book-title {
+            font-size: 1rem;
+            font-weight: 500;
         }
 
         .read-btn {
-            background: var(--primary);
+            background: var(--nord10);
             color: white;
             text-decoration: none;
-            padding: 4px 12px;
-            border-radius: 3px;
-            font-size: 0.75rem;
-            font-weight: 600;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            transition: all 0.2s;
+        }
+
+        .read-btn:hover {
+            background: var(--nord9);
+            box-shadow: 0 0 15px rgba(129, 161, 193, 0.4);
         }
 
         footer {
             text-align: center;
             padding: 40px;
-            font-size: 0.8rem;
-            color: var(--shelf-color);
-            opacity: 0.7;
+            font-size: 0.85rem;
+            color: var(--nord3);
         }
 
+        @media (max-width: 992px) {
+            .shelf-row { grid-template-columns: repeat(3, 1fr); }
+        }
         @media (max-width: 768px) {
             .shelf-row { grid-template-columns: repeat(2, 1fr); }
-            .logo h1 { font-size: 1.5rem; }
+            .logo h1 { font-size: 1.8rem; }
+        }
+        @media (max-width: 480px) {
+            .shelf-row { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -261,7 +329,7 @@
     </div>
 
     <div class="search-box">
-        <input type="text" id="search-input" placeholder="စာရေးဆရာ ရှာဖွေရန်...">
+        <input type="text" id="search-input" placeholder="စာရေးဆရာ သို့မဟုတ် စာအုပ်အမည် ရှာပါ...">
         <button>ရှာမယ်</button>
     </div>
 </header>
@@ -271,19 +339,30 @@
 </div>
 
 <footer>
-    <p>&copy; 2026 Whisper Library | All books are provided for free.</p>
+    <p>&copy; 2026 Whisper Library | Nordic Minimalist Design.</p>
 </footer>
 
 <div class="modal" id="book-modal">
     <div class="modal-content">
         <span class="close-modal" id="close-modal">&times;</span>
-        <h2 id="modal-author-name" style="color: var(--shelf-color); margin-bottom: 20px; font-size: 1.3rem;">Author Name</h2>
-        <div id="modal-book-list"></div>
+        <div class="modal-header">
+            <img id="modal-author-img" src="" class="modal-author-img">
+            <h2 id="modal-author-name" class="modal-author-name">Author Name</h2>
+        </div>
+        <div id="modal-book-list" class="book-list-container"></div>
     </div>
 </div>
 
 <script>
     let libraryData = [];
+    const authorPortraits = {
+        "မင်းလူ": "https://www.pannsattlann.com/wp-content/uploads/2026/03/မင်းလူ-300x300.png",
+        "မြသန်းတင့်": "https://mgyoe.com/wp-content/uploads/2021/06/Expert-Mya-Than-Tint.jpg",
+        "ဂျူး": "https://www.pannsattlann.com/wp-content/uploads/2020/10/amhattaya-75x75.png",
+        "တက္ကသိုလ်ဘုန်းနိုင်": "https://upload.wikimedia.org/wikipedia/my/thumb/b/b3/Tekkatho_Phone_Naing.jpg/220px-Tekkatho_Phone_Naing.jpg",
+        "မောင်ထွန်းသူ": "https://upload.wikimedia.org/wikipedia/my/thumb/3/3a/Maung_Tun_Thu.jpg/220px-Maung_Tun_Thu.jpg",
+        "default": "https://ui-avatars.com/api/?background=4c566a&color=eceff4&name="
+    };
 
     async function init() {
         try {
@@ -293,6 +372,10 @@
         } catch (error) {
             console.error('Error:', error);
         }
+    }
+
+    function getPortrait(name) {
+        return authorPortraits[name] || (authorPortraits.default + encodeURIComponent(name));
     }
 
     function renderShelf(data) {
@@ -305,9 +388,12 @@
             rowDiv.className = 'shelf-row';
             
             rowDiv.innerHTML = rowData.map(author => `
-                <div class="book-spine" onclick='showBooks(${JSON.stringify(author).replace(/'/g, "&apos;")})'>
-                    <div class="author-name">${author.author}</div>
-                    <div class="book-count">${author.books.length} အုပ်</div>
+                <div class="author-card" onclick='showBooks(${JSON.stringify(author).replace(/'/g, "&apos;")})'>
+                    <img src="${getPortrait(author.author)}" class="author-img" alt="${author.author}" onerror="this.src='${authorPortraits.default + author.author}'">
+                    <div class="author-info">
+                        <div class="author-name">${author.author}</div>
+                        <div class="book-count-badge">${author.books.length} Books</div>
+                    </div>
                 </div>
             `).join('');
             
@@ -318,11 +404,12 @@
     function showBooks(author) {
         const modal = document.getElementById('book-modal');
         document.getElementById('modal-author-name').textContent = author.author;
+        document.getElementById('modal-author-img').src = getPortrait(author.author);
         const list = document.getElementById('modal-book-list');
         list.innerHTML = author.books.map(b => `
-            <div class="book-row">
-                <span style="font-size: 0.9rem;">${b.title}</span>
-                <a href="${b.link}" target="_blank" class="read-btn">ဖတ်ရန်</a>
+            <div class="book-item">
+                <span class="book-title">${b.title}</span>
+                <a href="${b.link}" target="_blank" class="read-btn">ဖတ်ရန် →</a>
             </div>
         `).join('');
         modal.style.display = 'flex';
