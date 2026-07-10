@@ -130,7 +130,7 @@
 
         .author-card {
             background: var(--white);
-            height: 140px; /* Compact height */
+            height: 140px;
             display: flex;
             flex-direction: column;
             cursor: pointer;
@@ -150,6 +150,7 @@
             width: 100%;
             height: 90px;
             object-fit: cover;
+            object-position: center top; /* Better framing for faces */
             background: #eee;
         }
 
@@ -225,6 +226,7 @@
             height: 60px;
             border-radius: 50%;
             object-fit: cover;
+            object-position: center top;
             border: 2px solid var(--primary);
         }
 
@@ -321,12 +323,28 @@
 <script>
     let libraryData = [];
     const authorPortraits = {
-        "မင်းလူ": "https://www.pannsattlann.com/wp-content/uploads/2026/03/မင်းလူ-300x300.png",
-        "ချစ်ဦးညို": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS1D6I_bb57SZhKeHwLxIQ66rhKcI5YMkw2GNWmqv2ZQn847x2t2mawRT0ce883OxU7Cd4PWP7CA4rd_KxZ1d30h_5JZOH1EbJf43_JFw&s=10",
-        "မြသန်းတင့်": "https://mgyoe.com/wp-content/uploads/2021/06/Expert-Mya-Than-Tint.jpg",
-        "ဂျူး": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRW3zSl9bjcjGvpigw8r7fT9iikM_2l-5RLnFXeAxpOhIJ02MdCz1OfXiQiVQSHOez3FRiEim68xhTpqHaZx2PxMMpXvX1utixIASOnRQ&s=10",
-        "တက္ကသိုလ်ဘုန်းနိုင်": "https://upload.wikimedia.org/wikipedia/my/thumb/b/b3/Tekkatho_Phone_Naing.jpg/220px-Tekkatho_Phone_Naing.jpg",
-        "မောင်ထွန်းသူ": "https://upload.wikimedia.org/wikipedia/my/thumb/3/3a/Maung_Tun_Thu.jpg/220px-Maung_Tun_Thu.jpg",
+        "မင်းလူ": "https://saroatsin.com/api/authors/caf9ed17-b65d-4aa5-a318-ce5fc6cb462d/photo",
+        "မြသန်းတင့်": "https://saroatsin.com/api/authors/f2975711-4336-4ba8-a55a-9795d237d0d3/photo",
+        "ဂျူး": "https://saroatsin.com/api/authors/2c1df50c-fcfa-40f1-847b-0bc4203972b6/photo",
+        "တက္ကသိုလ်ဘုန်းနိုင်": "https://saroatsin.com/api/authors/cd7de35f-3ac6-44f0-b2a4-6f23c297f98d/photo",
+        "မင်းသိင်္ခ": "https://saroatsin.com/api/authors/a8a3a66e-e163-4b90-b91e-c63d3bdffbcf/photo",
+        "ချစ်ဦးညို": "https://saroatsin.com/api/authors/97121bcf-c7e0-4e37-a787-9bf2e49e06b4/photo",
+        "ဒဂုန်ရွှေမျှား": "https://saroatsin.com/api/authors/18d8b886-853d-44ce-9747-56187f652593/photo",
+        "ခက်ဇော်": "https://saroatsin.com/api/authors/525b7eca-9cdc-4c06-bcdb-d8003eb4a22c/photo",
+        "ခင်ခင်ထူး": "https://saroatsin.com/api/authors/c584f0a7-57b5-4d52-b56e-c5884d2bba28/photo",
+        "မောင်ပေါ်ထွန်း": "https://saroatsin.com/api/authors/a3e09316-bca9-4940-a778-448e4220d187/photo",
+        "သင့်လူ": "https://saroatsin.com/api/authors/b6209e46-73a4-4ba9-a810-38954e6e03df/photo",
+        "တာရာမင်းဝေ": "https://saroatsin.com/api/authors/76446488-87cd-49d6-8387-80599461538b/photo",
+        "မောင်ထွန်းသူ": "https://saroatsin.com/api/authors/bfbe9159-9985-4ebf-bac5-07b8a51265e2/photo",
+        "ရွှေဥဒေါင်း": "https://saroatsin.com/api/authors/24e367dc-3347-41e5-8cce-a095f89e46e4/photo",
+        "သော်တာဆွေ": "https://saroatsin.com/api/authors/ecef5654-3b90-4e10-a7f6-babf0c2abe31/photo",
+        "အကြည်တော်": "https://saroatsin.com/api/authors/8d6e3419-1b11-42ab-bab0-a0ec1e99a3dc/photo",
+        "ဂျာနယ်ကျော် မမလေး": "https://saroatsin.com/api/authors/c631b6d5-c6a9-405f-af24-c8b72aa2cc67/photo",
+        "နတ်နွယ်": "https://saroatsin.com/api/authors/135a7c4d-57a5-403f-9c44-3b687c92f7e7/photo",
+        "ပုညခင်": "https://saroatsin.com/api/authors/8506154d-d540-450a-a7c6-78f977b10c0f/photo",
+        "ခင်နှင်းယု": "https://saroatsin.com/api/authors/5ae7dc07-1416-4769-958a-e66242740ce1/photo",
+        "တင်မောင်မြင့်": "https://saroatsin.com/api/authors/93be21af-8207-4243-881d-d41a8f369c63/photo",
+        "နီကိုရဲ": "https://saroatsin.com/api/authors/e27dc9aa-69ec-4e95-bcce-0ec713f47cc7/photo",
         "default": "https://ui-avatars.com/api/?background=5d4037&color=f4f1ea&name="
     };
 
@@ -341,7 +359,9 @@
     }
 
     function getPortrait(name) {
-        return authorPortraits[name] || (authorPortraits.default + encodeURIComponent(name));
+        // Clean name for matching (e.g. "မြသန်းတင့်" vs "မြသန်းတင့်")
+        const normalizedName = name.replace(/့/g, "့").replace(/တင့်/g, "တင့်");
+        return authorPortraits[normalizedName] || authorPortraits[name] || (authorPortraits.default + encodeURIComponent(name));
     }
 
     function renderShelf(data) {
