@@ -27,13 +27,24 @@ jobs:
         with:
           gradle-version: '8.9'
 
+      - name: Bundle Myanmar reader fonts
+        shell: bash
+        run: |
+          mkdir -p android-wow-reader/app/src/main/assets/fonts
+          curl --retry 3 -fsSL https://raw.githubusercontent.com/whispermmepub/Font/main/subset-Pyidaungsu.woff2 -o android-wow-reader/app/src/main/assets/fonts/pyidaungsu.woff2
+          curl --retry 3 -fsSL https://raw.githubusercontent.com/whispermmepub/Font/main/subset-A10_YoeShin-Regular.woff2 -o android-wow-reader/app/src/main/assets/fonts/yoeshin.woff2
+          curl --retry 3 -fsSL https://raw.githubusercontent.com/whispermmepub/Font/main/subset-Burma2-Normal.woff2 -o android-wow-reader/app/src/main/assets/fonts/burma2.woff2
+          test -s android-wow-reader/app/src/main/assets/fonts/pyidaungsu.woff2
+          test -s android-wow-reader/app/src/main/assets/fonts/yoeshin.woff2
+          test -s android-wow-reader/app/src/main/assets/fonts/burma2.woff2
+
       - name: Build release APK
         run: gradle -p android-wow-reader :app:assembleRelease --stacktrace
 
       - name: Collect unsigned APK and signer
         shell: bash
         run: |
-          cp android-wow-reader/app/build/outputs/apk/release/app-release-unsigned.apk WoW-Reader-v1.0.0-unsigned.apk
+          cp android-wow-reader/app/build/outputs/apk/release/app-release-unsigned.apk WoW-Reader-v1.1.0-unsigned.apk
           APKSIGNER_JAR=$(find "$ANDROID_HOME/build-tools" -path '*/lib/apksigner.jar' | sort -V | tail -n 1)
           test -n "$APKSIGNER_JAR"
           cp "$APKSIGNER_JAR" apksigner.jar
@@ -43,7 +54,7 @@ jobs:
         with:
           name: WoW-Reader-Unsigned
           path: |
-            WoW-Reader-v1.0.0-unsigned.apk
+            WoW-Reader-v1.1.0-unsigned.apk
             apksigner.jar
           if-no-files-found: error
           retention-days: 7
