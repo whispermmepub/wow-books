@@ -27,16 +27,23 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Build debug APK
-        run: gradle -p android-wow-reader :app:assembleDebug --stacktrace
+      - name: Build release APK
+        run: gradle -p android-wow-reader :app:assembleRelease --stacktrace
 
-      - name: Copy APK
-        run: cp android-wow-reader/app/build/outputs/apk/debug/app-debug.apk WoW-Reader-v1.0.0.apk
+      - name: Collect unsigned APK and signer
+        shell: bash
+        run: |
+          cp android-wow-reader/app/build/outputs/apk/release/app-release-unsigned.apk WoW-Reader-v1.0.0-unsigned.apk
+          APKSIGNER_JAR=$(find "$ANDROID_HOME/build-tools" -path '*/lib/apksigner.jar' | sort -V | tail -n 1)
+          test -n "$APKSIGNER_JAR"
+          cp "$APKSIGNER_JAR" apksigner.jar
 
-      - name: Upload APK
+      - name: Upload signing inputs
         uses: actions/upload-artifact@v4
         with:
-          name: WoW-Reader-APK
-          path: WoW-Reader-v1.0.0.apk
+          name: WoW-Reader-Unsigned
+          path: |
+            WoW-Reader-v1.0.0-unsigned.apk
+            apksigner.jar
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 7
