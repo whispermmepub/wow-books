@@ -1,0 +1,42 @@
+name: Build WoW Reader APK
+
+on:
+  push:
+    branches:
+      - wow-reader-app
+    paths:
+      - 'android-wow-reader/**'
+      - '.github/workflows/wow-reader.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Build debug APK
+        run: gradle -p android-wow-reader :app:assembleDebug --stacktrace
+
+      - name: Copy APK
+        run: cp android-wow-reader/app/build/outputs/apk/debug/app-debug.apk WoW-Reader-v1.0.0.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: WoW-Reader-APK
+          path: WoW-Reader-v1.0.0.apk
+          if-no-files-found: error
+          retention-days: 30
