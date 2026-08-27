@@ -31,11 +31,9 @@ jobs:
         shell: bash
         run: |
           sed -i '/f\.setXIncludeAware(false);/d' android-wow-reader/app/src/main/java/com/whisper/wowreader/EpubUtil.java
-          sed -i "s/versionCode 2/versionCode 3/" android-wow-reader/app/build.gradle
-          sed -i "s/versionName '1.1.0'/versionName '1.1.1'/" android-wow-reader/app/build.gradle
-          grep -q "versionCode 3" android-wow-reader/app/build.gradle
-          grep -q "versionName '1.1.1'" android-wow-reader/app/build.gradle
           ! grep -q "setXIncludeAware(false)" android-wow-reader/app/src/main/java/com/whisper/wowreader/EpubUtil.java
+          grep -q "versionCode 4" android-wow-reader/app/build.gradle
+          grep -q "versionName '1.2.0'" android-wow-reader/app/build.gradle
 
       - name: Bundle Myanmar reader fonts
         shell: bash
@@ -54,7 +52,7 @@ jobs:
       - name: Collect unsigned APK and signer
         shell: bash
         run: |
-          cp android-wow-reader/app/build/outputs/apk/release/app-release-unsigned.apk WoW-Reader-v1.1.1-unsigned.apk
+          cp android-wow-reader/app/build/outputs/apk/release/app-release-unsigned.apk WoW-Reader-v1.2.0-unsigned.apk
           APKSIGNER_JAR=$(find "$ANDROID_HOME/build-tools" -path '*/lib/apksigner.jar' | sort -V | tail -n 1)
           test -n "$APKSIGNER_JAR"
           cp "$APKSIGNER_JAR" apksigner.jar
@@ -64,7 +62,7 @@ jobs:
         with:
           name: WoW-Reader-Unsigned
           path: |
-            WoW-Reader-v1.1.1-unsigned.apk
+            WoW-Reader-v1.2.0-unsigned.apk
             apksigner.jar
           if-no-files-found: error
           retention-days: 7
