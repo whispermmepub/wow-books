@@ -10,6 +10,7 @@
         <activity
             android:name=".BookReaderActivity"
             android:configChanges="orientation|screenSize|keyboardHidden"
+            android:enableOnBackInvokedCallback="true"
             android:screenOrientation="unspecified" />
 
         <activity
