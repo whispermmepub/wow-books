@@ -36,6 +36,9 @@ jobs:
           grep -q "versionName '1.7.0'" android-wow-reader/app/build.gradle
           test -s android-wow-reader/app/src/main/res/drawable/wow_logo.webp
 
+      - name: Apply Android 6 compatibility fixes
+        run: python3 android-wow-reader/patch_android23_compat.py
+
       - name: Apply v1.7 smooth page engine
         run: python3 android-wow-reader/patch_reader_v170.py
 
@@ -83,7 +86,14 @@ jobs:
         run: gradle -p android-wow-reader :app:assembleRelease --stacktrace
 
       - name: Android lint
-        run: gradle -p android-wow-reader :app:lintRelease --stacktrace
+        shell: bash
+        run: |
+          set +e
+          gradle -p android-wow-reader :app:lintRelease --stacktrace
+          RC=$?
+          REPORT=android-wow-reader/app/build/intermediates/lint_intermediate_text_report/release/lintReportRelease/lint-results-release.txt
+          if [ -f "$REPORT" ]; then cat "$REPORT"; fi
+          exit $RC
 
       - name: APK smoke checks
         shell: bash
