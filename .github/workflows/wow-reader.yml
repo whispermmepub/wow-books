@@ -65,6 +65,9 @@ jobs:
       - name: Apply v2.1 native curl and glass reader UI
         run: python3 android-wow-reader/patch_reader_v210.py
 
+      - name: Restore v2.1 reader helper
+        run: python3 android-wow-reader/patch_reader_v210_compile_fix.py
+
       - name: Reader and cloud safety checks
         shell: bash
         run: |
@@ -82,7 +85,7 @@ jobs:
                          'Auto spacing adjustment', 'text-justify:inter-character', 'fontPercent = 100',
                          'lineSpacing = 160', 'marginPercent = 5', 'Page animation', 'Paper · default',
                          'startNativePageCurl', 'finishPendingChapterCurl', 'chapterDisplayTitle',
-                         'setBackgroundBlurRadius', 'sync_updated_ms'],
+                         'setBackgroundBlurRadius', 'private String jsQuote(String', 'sync_updated_ms'],
               'curl': ['drawBitmapMesh', 'MESH_W = 28', 'LinearGradient', 'startCurl', 'hold(Bitmap current)'],
               'epub': ['isGenericTitle(result.title)', 'isGenericTitle(info.title)', 'titleFromFilename', 'isMeaningfulChapterTitle'],
               'home': ['https://t.me/TheBookR', 'https://saroatsin.com',
