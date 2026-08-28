@@ -32,8 +32,10 @@ jobs:
         run: |
           sed -i '/f\.setXIncludeAware(false);/d' android-wow-reader/app/src/main/java/com/whisper/wowreader/EpubUtil.java
           ! grep -q "setXIncludeAware(false)" android-wow-reader/app/src/main/java/com/whisper/wowreader/EpubUtil.java
-          grep -q "versionCode 11" android-wow-reader/app/build.gradle
-          grep -q "versionName '1.9.0'" android-wow-reader/app/build.gradle
+          grep -q "versionCode 12" android-wow-reader/app/build.gradle
+          grep -q "versionName '2.0.0'" android-wow-reader/app/build.gradle
+          grep -q "play-services-auth:21.6.0" android-wow-reader/app/build.gradle
+          grep -q "android.permission.INTERNET" android-wow-reader/app/src/main/AndroidManifest.xml
           test -s android-wow-reader/app/src/main/res/drawable/wow_logo.webp
 
       - name: Apply Android 6 compatibility fixes
@@ -48,10 +50,18 @@ jobs:
       - name: Apply v1.9 isolated pages and smart justify
         run: python3 android-wow-reader/patch_reader_v190.py
 
-      - name: Page engine safety checks
+      - name: Apply v2.0 paper page turn and sync timestamps
+        run: python3 android-wow-reader/patch_reader_v200.py
+
+      - name: Apply v2.0 home and Google Drive account sync
+        run: python3 android-wow-reader/patch_home_v200.py
+
+      - name: Reader and cloud safety checks
         shell: bash
         run: |
           READER=android-wow-reader/app/src/main/java/com/whisper/wowreader/BookReaderActivity.java
+          HOME=android-wow-reader/app/src/main/java/com/whisper/wowreader/MainActivity.java
+          DRIVE=android-wow-reader/app/src/main/java/com/whisper/wowreader/GoogleDriveSync.java
           grep -q 'Page by page' "$READER"
           grep -q 'wow-page-viewport' "$READER"
           grep -q 'flow.style.width=pw' "$READER"
@@ -65,7 +75,20 @@ jobs:
           grep -q 'fontPercent = 100' "$READER"
           grep -q 'lineSpacing = 160' "$READER"
           grep -q 'marginPercent = 5' "$READER"
-          grep -q 'prefs.getString("epub_reading_mode", "page")' "$READER"
+          grep -q 'Page animation' "$READER"
+          grep -q 'Paper · default' "$READER"
+          grep -q 'st.paperTurn' "$READER"
+          grep -q 'perspective(1200px)' "$READER"
+          grep -q 'sync_updated_ms' "$READER"
+          grep -q 'https://t.me/TheBookR' "$HOME"
+          grep -q 'https://saroatsin.com' "$HOME"
+          grep -q 'https://www.googleapis.com/auth/drive.file' "$HOME"
+          grep -q 'AuthorizationRequest.Prompt.SELECT_ACCOUNT' "$HOME"
+          grep -q 'GoogleDriveSync.sync' "$HOME"
+          grep -q 'maybeAutoSync' "$HOME"
+          grep -q 'FOLDER_NAME = "WoW Reader"' "$DRIVE"
+          grep -q 'www.googleapis.com/drive/v3' "$DRIVE"
+          grep -q 'upload/drive/v3' "$DRIVE"
           ! grep -q 'window.scrollTo({left:' "$READER"
           python3 - <<'PY'
           # One page step must be exactly one viewport wide at representative phone widths.
@@ -80,7 +103,7 @@ jobs:
                       x = margin - page * viewport
                       next_x = margin - (page + 1) * viewport
                       assert x - next_x == viewport
-          # Page-index contract: a valid input changes at most one page.
+          # Page-index contract: one valid input changes exactly one page.
           for count in range(1, 201):
               for page in range(count):
                   for delta in (-1, 1):
@@ -94,7 +117,7 @@ jobs:
                           assert abs(result[1] - page) == 1
                       else:
                           assert result[1] == page
-          print('v1.9 pixel pagination and page-index contracts passed')
+          print('v2.0 page, paper-turn and cloud contracts passed')
           PY
 
       - name: Bundle Myanmar reader fonts
@@ -128,13 +151,14 @@ jobs:
           test -s "$APK"
           AAPT=$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -n 1)
           "$AAPT" dump badging "$APK" | grep -q "package: name='com.whisper.wowreader'"
-          "$AAPT" dump badging "$APK" | grep -q "versionCode='11'"
-          "$AAPT" dump badging "$APK" | grep -q "versionName='1.9.0'"
+          "$AAPT" dump badging "$APK" | grep -q "versionCode='12'"
+          "$AAPT" dump badging "$APK" | grep -q "versionName='2.0.0'"
+          "$AAPT" dump permissions "$APK" | grep -q 'android.permission.INTERNET'
 
       - name: Collect unsigned APK and signer
         shell: bash
         run: |
-          cp android-wow-reader/app/build/outputs/apk/release/app-release-unsigned.apk WoW-Reader-v1.9.0-unsigned.apk
+          cp android-wow-reader/app/build/outputs/apk/release/app-release-unsigned.apk WoW-Reader-v2.0.0-unsigned.apk
           APKSIGNER_JAR=$(find "$ANDROID_HOME/build-tools" -path '*/lib/apksigner.jar' | sort -V | tail -n 1)
           test -n "$APKSIGNER_JAR"
           cp "$APKSIGNER_JAR" apksigner.jar
@@ -144,7 +168,7 @@ jobs:
         with:
           name: WoW-Reader-Unsigned
           path: |
-            WoW-Reader-v1.9.0-unsigned.apk
+            WoW-Reader-v2.0.0-unsigned.apk
             apksigner.jar
           if-no-files-found: error
           retention-days: 7
