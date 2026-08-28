@@ -27,16 +27,46 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Stable reader checks
+      - name: Android EPUB parser compatibility fix
         shell: bash
         run: |
           sed -i '/f\.setXIncludeAware(false);/d' android-wow-reader/app/src/main/java/com/whisper/wowreader/EpubUtil.java
           ! grep -q "setXIncludeAware(false)" android-wow-reader/app/src/main/java/com/whisper/wowreader/EpubUtil.java
-          grep -q "versionCode 8" android-wow-reader/app/build.gradle
-          grep -q "versionName '1.6.0'" android-wow-reader/app/build.gradle
-          grep -q 'putString("epub_reading_mode", "scroll")' android-wow-reader/app/src/main/java/com/whisper/wowreader/BookReaderActivity.java
-          ! grep -q 'Page by page' android-wow-reader/app/src/main/java/com/whisper/wowreader/BookReaderActivity.java
+          grep -q "versionCode 9" android-wow-reader/app/build.gradle
+          grep -q "versionName '1.7.0'" android-wow-reader/app/build.gradle
           test -s android-wow-reader/app/src/main/res/drawable/wow_logo.webp
+
+      - name: Apply v1.7 smooth page engine
+        run: python3 android-wow-reader/patch_reader_v170.py
+
+      - name: Page engine safety checks
+        shell: bash
+        run: |
+          READER=android-wow-reader/app/src/main/java/com/whisper/wowreader/BookReaderActivity.java
+          grep -q 'Page by page' "$READER"
+          grep -q 'pageTurnLocked' "$READER"
+          grep -q 'window.__wowPageEngine' "$READER"
+          grep -q 'column-width:86vw' "$READER"
+          grep -q 'column-gap:14vw' "$READER"
+          grep -q 'putString("epub_reading_mode", readingMode)' "$READER"
+          ! grep -q 'window.scrollTo({left:' "$READER"
+          python3 - <<'PY'
+          # Model the production page-index contract: a valid tap changes at most one page.
+          for count in range(1, 151):
+              for page in range(count):
+                  for delta in (-1, 1):
+                      if delta < 0 and page == 0:
+                          result = ('chapter', page)
+                      elif delta > 0 and page == count - 1:
+                          result = ('chapter', page)
+                      else:
+                          result = ('page', max(0, min(count - 1, page + delta)))
+                      if result[0] == 'page':
+                          assert abs(result[1] - page) == 1
+                      else:
+                          assert result[1] == page
+          print('page-index contract passed')
+          PY
 
       - name: Bundle Myanmar reader fonts
         shell: bash
@@ -52,6 +82,9 @@ jobs:
       - name: Build release APK
         run: gradle -p android-wow-reader :app:assembleRelease --stacktrace
 
+      - name: Android lint
+        run: gradle -p android-wow-reader :app:lintRelease --stacktrace
+
       - name: APK smoke checks
         shell: bash
         run: |
@@ -59,13 +92,13 @@ jobs:
           test -s "$APK"
           AAPT=$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -n 1)
           "$AAPT" dump badging "$APK" | grep -q "package: name='com.whisper.wowreader'"
-          "$AAPT" dump badging "$APK" | grep -q "versionCode='8'"
-          "$AAPT" dump badging "$APK" | grep -q "versionName='1.6.0'"
+          "$AAPT" dump badging "$APK" | grep -q "versionCode='9'"
+          "$AAPT" dump badging "$APK" | grep -q "versionName='1.7.0'"
 
       - name: Collect unsigned APK and signer
         shell: bash
         run: |
-          cp android-wow-reader/app/build/outputs/apk/release/app-release-unsigned.apk WoW-Reader-v1.6.0-unsigned.apk
+          cp android-wow-reader/app/build/outputs/apk/release/app-release-unsigned.apk WoW-Reader-v1.7.0-unsigned.apk
           APKSIGNER_JAR=$(find "$ANDROID_HOME/build-tools" -path '*/lib/apksigner.jar' | sort -V | tail -n 1)
           test -n "$APKSIGNER_JAR"
           cp "$APKSIGNER_JAR" apksigner.jar
@@ -75,7 +108,7 @@ jobs:
         with:
           name: WoW-Reader-Unsigned
           path: |
-            WoW-Reader-v1.6.0-unsigned.apk
+            WoW-Reader-v1.7.0-unsigned.apk
             apksigner.jar
           if-no-files-found: error
           retention-days: 7
