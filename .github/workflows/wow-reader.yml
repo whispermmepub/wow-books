@@ -55,6 +55,9 @@ jobs:
       - name: Apply v2.0 home and Google Drive sync
         run: python3 android-wow-reader/patch_home_v200.py
 
+      - name: Restore SAF lint annotation
+        run: python3 android-wow-reader/patch_home_v200_lint.py
+
       - name: Reader and cloud safety checks
         shell: bash
         run: |
@@ -72,7 +75,7 @@ jobs:
                          'st.paperTurn', 'perspective(1200px)', 'sync_updated_ms'],
               'home': ['https://t.me/TheBookR', 'https://saroatsin.com',
                        'https://www.googleapis.com/auth/drive.file', 'AuthorizationRequest.Prompt.SELECT_ACCOUNT',
-                       'GoogleDriveSync.sync', 'maybeAutoSync'],
+                       'GoogleDriveSync.sync', 'maybeAutoSync', '@SuppressLint("WrongConstant")'],
               'drive': ['FOLDER_NAME = "WoW Reader"', 'www.googleapis.com/drive/v3',
                         'upload/drive/v3', 'STATE_NAME', 'Google Drive sync failed'],
           }
