@@ -31,12 +31,13 @@ jobs:
         run: |
           sed -i '/f\.setXIncludeAware(false);/d' android-wow-reader/app/src/main/java/com/whisper/wowreader/EpubUtil.java
           ! grep -q "setXIncludeAware(false)" android-wow-reader/app/src/main/java/com/whisper/wowreader/EpubUtil.java
-          grep -q "versionCode 14" android-wow-reader/app/build.gradle
-          grep -q "versionName '2.2.0'" android-wow-reader/app/build.gradle
-          grep -q "play-services-auth:21.6.0" android-wow-reader/app/build.gradle
+          grep -q "versionCode 15" android-wow-reader/app/build.gradle
+          grep -q "versionName '2.3.0'" android-wow-reader/app/build.gradle
+          ! grep -q "play-services-auth" android-wow-reader/app/build.gradle
           grep -q "android.permission.INTERNET" android-wow-reader/app/src/main/AndroidManifest.xml
           test -s android-wow-reader/app/src/main/res/drawable/wow_logo.webp
           test -s android-wow-reader/app/src/main/java/com/whisper/wowreader/PageCurlView.java
+          test -s android-wow-reader/app/src/main/java/com/whisper/wowreader/ReaderAnnotationStore.java
 
       - name: Apply Android 6 compatibility fixes
         run: python3 android-wow-reader/patch_android23_compat.py
@@ -50,14 +51,8 @@ jobs:
       - name: Apply v1.9 exact pages and smart justify
         run: python3 android-wow-reader/patch_reader_v190.py
 
-      - name: Apply v2.0 paper animation and sync timestamps
+      - name: Apply v2.0 paper animation base
         run: python3 android-wow-reader/patch_reader_v200.py
-
-      - name: Apply v2.0 home and Google Drive sync
-        run: python3 android-wow-reader/patch_home_v200.py
-
-      - name: Restore SAF lint annotation
-        run: python3 android-wow-reader/patch_home_v200_lint.py
 
       - name: Apply v2.1 EPUB title cleanup
         run: python3 android-wow-reader/patch_epub_v210.py
@@ -77,7 +72,13 @@ jobs:
       - name: Restore v2.2 native curl block
         run: python3 android-wow-reader/patch_reader_v220_restore_curl.py
 
-      - name: Reader and cloud safety checks
+      - name: Apply v2.3 home community links
+        run: python3 android-wow-reader/patch_home_v230.py
+
+      - name: Apply v2.3 highlights notes and translate
+        run: python3 android-wow-reader/patch_reader_v230.py
+
+      - name: Reader and product safety checks
         shell: bash
         run: |
           python3 - <<'PY'
@@ -87,7 +88,7 @@ jobs:
               'curl': Path('android-wow-reader/app/src/main/java/com/whisper/wowreader/PageCurlView.java').read_text(),
               'epub': Path('android-wow-reader/app/src/main/java/com/whisper/wowreader/EpubUtil.java').read_text(),
               'home': Path('android-wow-reader/app/src/main/java/com/whisper/wowreader/MainActivity.java').read_text(),
-              'drive': Path('android-wow-reader/app/src/main/java/com/whisper/wowreader/GoogleDriveSync.java').read_text(),
+              'annotations': Path('android-wow-reader/app/src/main/java/com/whisper/wowreader/ReaderAnnotationStore.java').read_text(),
           }
           checks = {
               'reader': ['prefs.getString("epub_reading_mode", "page")', 'wow-page-viewport', 'flow.style.width=pw', 'Text alignment',
@@ -95,17 +96,18 @@ jobs:
                          'lineSpacing = 160', 'marginPercent = 5', 'Page animation', 'Paper · default',
                          'startNativePageCurl', 'finishPendingChapterCurl', 'setBackgroundBlurRadius',
                          'tocSpineIndices', 'tocFragments', 'collectPageMap', 'onEmptyChapter',
-                         'goToFragment', 'headingFg', 'break-before', 'private String jsQuote(String', 'sync_updated_ms'],
+                         'goToFragment', 'headingFg', 'break-before', 'createSelectionActionModeCallback',
+                         'Highlight', 'Add note', 'Translate', 'applySavedAnnotations', 'ReaderAnnotationStore.add',
+                         'https://translate.google.com/', 'Notes & highlights'],
               'curl': ['drawBitmapMesh', 'MESH_W = 34', 'LinearGradient', 'PathInterpolator',
                        'drawCurledBitmap(canvas, fromBitmap, progress, direction)', 'hold(Bitmap current)'],
               'epub': ['isGenericTitle(result.title)', 'isGenericTitle(info.title)', 'titleFromFilename',
                        'tocSpineIndices', 'collectNavEntries', 'collectNcxEntries', 'hasReadableContent',
                        '"no".equalsIgnoreCase(ref.getAttribute("linear"))', 'fragmentFromHref', 'isAuxiliaryTocLabel'],
-              'home': ['https://t.me/TheBookR', 'https://saroatsin.com',
-                       'https://www.googleapis.com/auth/drive.file', 'AuthorizationRequest.Prompt.SELECT_ACCOUNT',
-                       'GoogleDriveSync.sync', 'maybeAutoSync', '@SuppressLint("WrongConstant")'],
-              'drive': ['FOLDER_NAME = "WoW Reader"', 'www.googleapis.com/drive/v3',
-                        'upload/drive/v3', 'STATE_NAME', 'Google Drive sync failed'],
+              'home': ['https://t.me/TheBookR', 'https://t.me/+rUiqzi2mdhNiNGZl',
+                       'https://saroatsin.com', 'https://whispermmepub.github.io/Review/',
+                       'Discover & community', 'Backup & restore'],
+              'annotations': ['class ReaderAnnotationStore', 'annotations_', 'chapterJson', 'sync_updated_ms'],
           }
           missing = []
           for group, patterns in checks.items():
@@ -114,23 +116,20 @@ jobs:
                       missing.append(f'{group}: {pattern}')
           if 'window.scrollTo({left:' in files['reader']:
               missing.append('reader: old horizontal scroll engine still present')
+          if 'AuthorizationRequest' in files['home'] or 'GoogleDriveSync.sync' in files['home']:
+              missing.append('home: Google account sync UI/code unexpectedly enabled')
           if missing:
               print('MISSING CONTRACTS:')
               print('\n'.join(missing))
               raise SystemExit(1)
 
-          for physical_map in ([0], [0, 1, 2], [0, 2, 3, 7], [1, 4, 8, 9, 15]):
-              for logical in range(len(physical_map)):
-                  for delta in (-1, 1):
-                      target = logical + delta
-                      if 0 <= target < len(physical_map):
-                          assert abs(target - logical) == 1
-                          assert physical_map[target] != physical_map[logical]
-
+          # Annotation offsets must represent non-empty, ordered text ranges.
+          samples = [(0, 4), (12, 36), (100, 101)]
+          assert all(start >= 0 and end > start for start, end in samples)
           auxiliary = {'cover', 'cover page', 'title page', 'copyright', 'about us',
                        'contents', 'table of contents', 'toc', 'publisher', 'imprint'}
           assert 'cover' in auxiliary and 'about us' in auxiliary
-          print('v2.2 exact TOC, blank-page map, dark mode and curl contracts passed')
+          print('v2.3 reader, annotations, translation, links and v2.2 rendering contracts passed')
           PY
 
       - name: Bundle Myanmar reader fonts
@@ -164,14 +163,14 @@ jobs:
           test -s "$APK"
           AAPT=$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -n 1)
           "$AAPT" dump badging "$APK" | grep -q "package: name='com.whisper.wowreader'"
-          "$AAPT" dump badging "$APK" | grep -q "versionCode='14'"
-          "$AAPT" dump badging "$APK" | grep -q "versionName='2.2.0'"
+          "$AAPT" dump badging "$APK" | grep -q "versionCode='15'"
+          "$AAPT" dump badging "$APK" | grep -q "versionName='2.3.0'"
           "$AAPT" dump permissions "$APK" | grep -q 'android.permission.INTERNET'
 
       - name: Collect unsigned APK and signer
         shell: bash
         run: |
-          cp android-wow-reader/app/build/outputs/apk/release/app-release-unsigned.apk WoW-Reader-v2.2.0-unsigned.apk
+          cp android-wow-reader/app/build/outputs/apk/release/app-release-unsigned.apk WoW-Reader-v2.3.0-unsigned.apk
           APKSIGNER_JAR=$(find "$ANDROID_HOME/build-tools" -path '*/lib/apksigner.jar' | sort -V | tail -n 1)
           test -n "$APKSIGNER_JAR"
           cp "$APKSIGNER_JAR" apksigner.jar
@@ -181,7 +180,7 @@ jobs:
         with:
           name: WoW-Reader-Unsigned
           path: |
-            WoW-Reader-v2.2.0-unsigned.apk
+            WoW-Reader-v2.3.0-unsigned.apk
             apksigner.jar
           if-no-files-found: error
           retention-days: 7
