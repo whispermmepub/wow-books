@@ -17,7 +17,7 @@ if '    private void startNativePageCurl(' not in s:
 
 assert 'private void turnPage(int delta)' in s
 assert 'private void startNativePageCurl' in s
-assert 'private void finishPendingChapterCurl' in s
+assert 'private boolean finishPendingChapterCurl' in s
 assert 'private Bitmap captureWebViewBitmap' in s
 
 reader.write_text(s, encoding='utf-8')
