@@ -31,11 +31,12 @@ jobs:
         run: |
           sed -i '/f\.setXIncludeAware(false);/d' android-wow-reader/app/src/main/java/com/whisper/wowreader/EpubUtil.java
           ! grep -q "setXIncludeAware(false)" android-wow-reader/app/src/main/java/com/whisper/wowreader/EpubUtil.java
-          grep -q "versionCode 12" android-wow-reader/app/build.gradle
-          grep -q "versionName '2.0.0'" android-wow-reader/app/build.gradle
+          grep -q "versionCode 13" android-wow-reader/app/build.gradle
+          grep -q "versionName '2.1.0'" android-wow-reader/app/build.gradle
           grep -q "play-services-auth:21.6.0" android-wow-reader/app/build.gradle
           grep -q "android.permission.INTERNET" android-wow-reader/app/src/main/AndroidManifest.xml
           test -s android-wow-reader/app/src/main/res/drawable/wow_logo.webp
+          test -s android-wow-reader/app/src/main/java/com/whisper/wowreader/PageCurlView.java
 
       - name: Apply Android 6 compatibility fixes
         run: python3 android-wow-reader/patch_android23_compat.py
@@ -58,6 +59,12 @@ jobs:
       - name: Restore SAF lint annotation
         run: python3 android-wow-reader/patch_home_v200_lint.py
 
+      - name: Apply v2.1 EPUB title cleanup
+        run: python3 android-wow-reader/patch_epub_v210.py
+
+      - name: Apply v2.1 native curl and glass reader UI
+        run: python3 android-wow-reader/patch_reader_v210.py
+
       - name: Reader and cloud safety checks
         shell: bash
         run: |
@@ -65,6 +72,8 @@ jobs:
           from pathlib import Path
           files = {
               'reader': Path('android-wow-reader/app/src/main/java/com/whisper/wowreader/BookReaderActivity.java').read_text(),
+              'curl': Path('android-wow-reader/app/src/main/java/com/whisper/wowreader/PageCurlView.java').read_text(),
+              'epub': Path('android-wow-reader/app/src/main/java/com/whisper/wowreader/EpubUtil.java').read_text(),
               'home': Path('android-wow-reader/app/src/main/java/com/whisper/wowreader/MainActivity.java').read_text(),
               'drive': Path('android-wow-reader/app/src/main/java/com/whisper/wowreader/GoogleDriveSync.java').read_text(),
           }
@@ -72,7 +81,10 @@ jobs:
               'reader': ['prefs.getString("epub_reading_mode", "page")', 'wow-page-viewport', 'flow.style.width=pw', 'Text alignment',
                          'Auto spacing adjustment', 'text-justify:inter-character', 'fontPercent = 100',
                          'lineSpacing = 160', 'marginPercent = 5', 'Page animation', 'Paper · default',
-                         'st.paperTurn', 'perspective(1200px)', 'sync_updated_ms'],
+                         'startNativePageCurl', 'finishPendingChapterCurl', 'chapterDisplayTitle',
+                         'setBackgroundBlurRadius', 'sync_updated_ms'],
+              'curl': ['drawBitmapMesh', 'MESH_W = 28', 'LinearGradient', 'startCurl', 'hold(Bitmap current)'],
+              'epub': ['isGenericTitle(result.title)', 'isGenericTitle(info.title)', 'titleFromFilename', 'isMeaningfulChapterTitle'],
               'home': ['https://t.me/TheBookR', 'https://saroatsin.com',
                        'https://www.googleapis.com/auth/drive.file', 'AuthorizationRequest.Prompt.SELECT_ACCOUNT',
                        'GoogleDriveSync.sync', 'maybeAutoSync', '@SuppressLint("WrongConstant")'],
@@ -107,7 +119,7 @@ jobs:
                       else:
                           result = page + delta
                           assert abs(result - page) == 1
-          print('v2.0 page, paper-turn and cloud contracts passed')
+          print('v2.1 native curl, seamless chapter, TOC and cloud contracts passed')
           PY
 
       - name: Bundle Myanmar reader fonts
@@ -141,14 +153,14 @@ jobs:
           test -s "$APK"
           AAPT=$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -n 1)
           "$AAPT" dump badging "$APK" | grep -q "package: name='com.whisper.wowreader'"
-          "$AAPT" dump badging "$APK" | grep -q "versionCode='12'"
-          "$AAPT" dump badging "$APK" | grep -q "versionName='2.0.0'"
+          "$AAPT" dump badging "$APK" | grep -q "versionCode='13'"
+          "$AAPT" dump badging "$APK" | grep -q "versionName='2.1.0'"
           "$AAPT" dump permissions "$APK" | grep -q 'android.permission.INTERNET'
 
       - name: Collect unsigned APK and signer
         shell: bash
         run: |
-          cp android-wow-reader/app/build/outputs/apk/release/app-release-unsigned.apk WoW-Reader-v2.0.0-unsigned.apk
+          cp android-wow-reader/app/build/outputs/apk/release/app-release-unsigned.apk WoW-Reader-v2.1.0-unsigned.apk
           APKSIGNER_JAR=$(find "$ANDROID_HOME/build-tools" -path '*/lib/apksigner.jar' | sort -V | tail -n 1)
           test -n "$APKSIGNER_JAR"
           cp "$APKSIGNER_JAR" apksigner.jar
@@ -158,7 +170,7 @@ jobs:
         with:
           name: WoW-Reader-Unsigned
           path: |
-            WoW-Reader-v2.0.0-unsigned.apk
+            WoW-Reader-v2.1.0-unsigned.apk
             apksigner.jar
           if-no-files-found: error
           retention-days: 7
