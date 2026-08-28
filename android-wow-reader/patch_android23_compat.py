@@ -19,13 +19,24 @@ s = s.replace(old_activity_result, '    @SuppressLint("WrongConstant")\n' + old_
 p.write_text(s, encoding='utf-8')
 
 # This is a file MIME-type VIEW filter, not a web/app-link filter. BROWSABLE is not
-# needed for Android's document "Open with" flow and makes lint expect an http(s) URL.
+# needed for Android's document "Open with" flow. Android Lint's AppLink checker
+# nevertheless treats ACTION_VIEW as a web link, so explicitly suppress only that
+# irrelevant check on this MIME filter.
 manifest = Path('android-wow-reader/app/src/main/AndroidManifest.xml')
 m = manifest.read_text(encoding='utf-8')
+if 'xmlns:tools=' not in m:
+    m = m.replace('<manifest xmlns:android="http://schemas.android.com/apk/res/android">',
+                  '<manifest xmlns:android="http://schemas.android.com/apk/res/android"\n    xmlns:tools="http://schemas.android.com/tools">', 1)
 browsable = '                <category android:name="android.intent.category.BROWSABLE" />\n'
-if browsable not in m:
-    raise SystemExit('BROWSABLE manifest anchor not found')
-m = m.replace(browsable, '', 1)
+if browsable in m:
+    m = m.replace(browsable, '', 1)
+view_filter = '''            <intent-filter>\n                <action android:name="android.intent.action.VIEW" />'''
+view_filter_ignored = '''            <intent-filter tools:ignore="AppLinkUrlError">\n                <action android:name="android.intent.action.VIEW" />'''
+if view_filter not in m:
+    if view_filter_ignored not in m:
+        raise SystemExit('VIEW MIME intent-filter anchor not found')
+else:
+    m = m.replace(view_filter, view_filter_ignored, 1)
 manifest.write_text(m, encoding='utf-8')
 
 print('Android 23 and lint compatibility patch applied')
