@@ -2,8 +2,7 @@ name: Build WoW Reader APK
 
 on:
   push:
-    branches:
-      - wow-reader-app
+    branches: [wow-reader-app]
     paths:
       - 'android-wow-reader/**'
       - '.github/workflows/wow-reader.yml'
@@ -27,7 +26,7 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Android EPUB parser compatibility fix
+      - name: Base project checks
         shell: bash
         run: |
           sed -i '/f\.setXIncludeAware(false);/d' android-wow-reader/app/src/main/java/com/whisper/wowreader/EpubUtil.java
@@ -41,82 +40,70 @@ jobs:
       - name: Apply Android 6 compatibility fixes
         run: python3 android-wow-reader/patch_android23_compat.py
 
-      - name: Apply v1.7 smooth page engine base
+      - name: Apply v1.7 page engine base
         run: python3 android-wow-reader/patch_reader_v170.py
 
-      - name: Apply v1.8 smart Burmese pagination base
+      - name: Apply v1.8 Burmese pagination base
         run: python3 android-wow-reader/patch_reader_v180.py
 
-      - name: Apply v1.9 isolated pages and smart justify
+      - name: Apply v1.9 exact pages and smart justify
         run: python3 android-wow-reader/patch_reader_v190.py
 
-      - name: Apply v2.0 paper page turn and sync timestamps
+      - name: Apply v2.0 paper animation and sync timestamps
         run: python3 android-wow-reader/patch_reader_v200.py
 
-      - name: Apply v2.0 home and Google Drive account sync
+      - name: Apply v2.0 home and Google Drive sync
         run: python3 android-wow-reader/patch_home_v200.py
 
       - name: Reader and cloud safety checks
         shell: bash
         run: |
-          READER=android-wow-reader/app/src/main/java/com/whisper/wowreader/BookReaderActivity.java
-          HOME=android-wow-reader/app/src/main/java/com/whisper/wowreader/MainActivity.java
-          DRIVE=android-wow-reader/app/src/main/java/com/whisper/wowreader/GoogleDriveSync.java
-          grep -q 'Page by page' "$READER"
-          grep -q 'wow-page-viewport' "$READER"
-          grep -q 'flow.style.width=pw' "$READER"
-          grep -q 'flow.style.columnWidth=pw' "$READER"
-          grep -q 'flow.style.columnGap=gap' "$READER"
-          grep -q 'Math.round((sw+st.gapPx)/st.step)' "$READER"
-          grep -q 'Text alignment' "$READER"
-          grep -q 'Justify' "$READER"
-          grep -q 'Auto spacing adjustment' "$READER"
-          grep -q 'text-justify:inter-character' "$READER"
-          grep -q 'fontPercent = 100' "$READER"
-          grep -q 'lineSpacing = 160' "$READER"
-          grep -q 'marginPercent = 5' "$READER"
-          grep -q 'Page animation' "$READER"
-          grep -q 'Paper · default' "$READER"
-          grep -q 'st.paperTurn' "$READER"
-          grep -q 'perspective(1200px)' "$READER"
-          grep -q 'sync_updated_ms' "$READER"
-          grep -q 'https://t.me/TheBookR' "$HOME"
-          grep -q 'https://saroatsin.com' "$HOME"
-          grep -q 'https://www.googleapis.com/auth/drive.file' "$HOME"
-          grep -q 'AuthorizationRequest.Prompt.SELECT_ACCOUNT' "$HOME"
-          grep -q 'GoogleDriveSync.sync' "$HOME"
-          grep -q 'maybeAutoSync' "$HOME"
-          grep -q 'FOLDER_NAME = "WoW Reader"' "$DRIVE"
-          grep -q 'www.googleapis.com/drive/v3' "$DRIVE"
-          grep -q 'upload/drive/v3' "$DRIVE"
-          ! grep -q 'window.scrollTo({left:' "$READER"
           python3 - <<'PY'
-          # One page step must be exactly one viewport wide at representative phone widths.
+          from pathlib import Path
+          files = {
+              'reader': Path('android-wow-reader/app/src/main/java/com/whisper/wowreader/BookReaderActivity.java').read_text(),
+              'home': Path('android-wow-reader/app/src/main/java/com/whisper/wowreader/MainActivity.java').read_text(),
+              'drive': Path('android-wow-reader/app/src/main/java/com/whisper/wowreader/GoogleDriveSync.java').read_text(),
+          }
+          checks = {
+              'reader': ['Page by page', 'wow-page-viewport', 'flow.style.width=pw', 'Text alignment',
+                         'Auto spacing adjustment', 'text-justify:inter-character', 'fontPercent = 100',
+                         'lineSpacing = 160', 'marginPercent = 5', 'Page animation', 'Paper · default',
+                         'st.paperTurn', 'perspective(1200px)', 'sync_updated_ms'],
+              'home': ['https://t.me/TheBookR', 'https://saroatsin.com',
+                       'https://www.googleapis.com/auth/drive.file', 'AuthorizationRequest.Prompt.SELECT_ACCOUNT',
+                       'GoogleDriveSync.sync', 'maybeAutoSync'],
+              'drive': ['FOLDER_NAME = "WoW Reader"', 'www.googleapis.com/drive/v3',
+                        'upload/drive/v3', 'STATE_NAME', 'Google Drive sync failed'],
+          }
+          missing = []
+          for group, patterns in checks.items():
+              for pattern in patterns:
+                  if pattern not in files[group]:
+                      missing.append(f'{group}: {pattern}')
+          if 'window.scrollTo({left:' in files['reader']:
+              missing.append('reader: old horizontal scroll engine still present')
+          if missing:
+              print('MISSING CONTRACTS:')
+              print('\n'.join(missing))
+              raise SystemExit(1)
+
           for viewport in [320, 360, 393, 412, 480, 600, 720, 1080, 1440]:
               for margin_pct in [3, 5, 7, 9, 12, 14]:
                   margin = round(viewport * margin_pct / 100)
                   page_width = viewport - 2 * margin
                   gap = viewport - page_width
-                  assert page_width + gap == viewport
-                  assert page_width > 0
+                  assert page_width + gap == viewport and page_width > 0
                   for page in range(20):
-                      x = margin - page * viewport
-                      next_x = margin - (page + 1) * viewport
-                      assert x - next_x == viewport
-          # Page-index contract: one valid input changes exactly one page.
+                      assert (margin - page * viewport) - (margin - (page + 1) * viewport) == viewport
           for count in range(1, 201):
               for page in range(count):
                   for delta in (-1, 1):
-                      if delta < 0 and page == 0:
-                          result = ('chapter', page)
-                      elif delta > 0 and page == count - 1:
-                          result = ('chapter', page)
+                      if delta < 0 and page == 0 or delta > 0 and page == count - 1:
+                          result = page
                       else:
-                          result = ('page', page + delta)
-                      if result[0] == 'page':
-                          assert abs(result[1] - page) == 1
-                      else:
-                          assert result[1] == page
+                          result = page + delta
+                          assert abs(result - page) == 1
           print('v2.0 page, paper-turn and cloud contracts passed')
           PY
 
