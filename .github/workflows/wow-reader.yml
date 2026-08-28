@@ -36,7 +36,7 @@ jobs:
           grep -q "versionName '1.6.0'" android-wow-reader/app/build.gradle
           grep -q 'putString("epub_reading_mode", "scroll")' android-wow-reader/app/src/main/java/com/whisper/wowreader/BookReaderActivity.java
           ! grep -q 'Page by page' android-wow-reader/app/src/main/java/com/whisper/wowreader/BookReaderActivity.java
-          test -s android-wow-reader/app/src/main/res/drawable/wow_logo.png
+          test -s android-wow-reader/app/src/main/res/drawable/wow_logo.webp
 
       - name: Bundle Myanmar reader fonts
         shell: bash
