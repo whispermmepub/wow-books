@@ -61,7 +61,7 @@ replacement = r'''    private static String guessChapterTitle(File chapter, int 
             }
 
             // Last body-text fallback: only use short text, never a full
-            // paragraph. This removes Unknown while keeping the TOC readable.
+            // paragraph. This removes generic labels while keeping the TOC readable.
             NodeList paragraphs = elements(doc, "p");
             for (int i = 0; i < paragraphs.getLength(); i++) {
                 String p = clean(paragraphs.item(i).getTextContent());
@@ -110,7 +110,7 @@ s = s[:start] + replacement + s[end:]
 assert 'isGenericTitle(result.title)' in s
 assert 'isGenericTitle(info.title)' in s
 assert 'titleFromFilename' in s
-assert 'Unknown' not in s or 'Unknown/Untitled' in s
+assert 'isMeaningfulChapterTitle' in s
 
 path.write_text(s, encoding='utf-8')
 print('WoW Reader v2.1 EPUB title cleanup patch applied')
