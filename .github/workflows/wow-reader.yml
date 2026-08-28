@@ -74,6 +74,9 @@ jobs:
       - name: Apply v2.2 exact pages and dark theme fixes
         run: python3 android-wow-reader/patch_reader_v220.py
 
+      - name: Restore v2.2 native curl block
+        run: python3 android-wow-reader/patch_reader_v220_restore_curl.py
+
       - name: Reader and cloud safety checks
         shell: bash
         run: |
@@ -116,8 +119,6 @@ jobs:
               print('\n'.join(missing))
               raise SystemExit(1)
 
-          # Page turns are one logical page at a time even if physical blank
-          # columns are omitted by pageMap.
           for physical_map in ([0], [0, 1, 2], [0, 2, 3, 7], [1, 4, 8, 9, 15]):
               for logical in range(len(physical_map)):
                   for delta in (-1, 1):
@@ -126,7 +127,6 @@ jobs:
                           assert abs(target - logical) == 1
                           assert physical_map[target] != physical_map[logical]
 
-          # TOC auxiliary labels must not be promoted to chapters.
           auxiliary = {'cover', 'cover page', 'title page', 'copyright', 'about us',
                        'contents', 'table of contents', 'toc', 'publisher', 'imprint'}
           assert 'cover' in auxiliary and 'about us' in auxiliary
