@@ -10,8 +10,8 @@ android {
         applicationId 'com.whisper.wowreader'
         minSdk 23
         targetSdk 35
-        versionCode 14
-        versionName '2.2.0'
+        versionCode 15
+        versionName '2.3.0'
     }
 
     buildTypes {
@@ -27,5 +27,4 @@ android {
 }
 
 dependencies {
-    implementation 'com.google.android.gms:play-services-auth:21.6.0'
 }
