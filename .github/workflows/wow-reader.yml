@@ -78,6 +78,9 @@ jobs:
       - name: Apply v2.3 highlights notes and translate
         run: python3 android-wow-reader/patch_reader_v230.py
 
+      - name: Apply v2.3 WebView selection action bar
+        run: python3 android-wow-reader/patch_reader_v230_webview_selection.py
+
       - name: Reader and product safety checks
         shell: bash
         run: |
@@ -96,8 +99,9 @@ jobs:
                          'lineSpacing = 160', 'marginPercent = 5', 'Page animation', 'Paper · default',
                          'startNativePageCurl', 'finishPendingChapterCurl', 'setBackgroundBlurRadius',
                          'tocSpineIndices', 'tocFragments', 'collectPageMap', 'onEmptyChapter',
-                         'goToFragment', 'headingFg', 'break-before', 'createSelectionActionModeCallback',
-                         'Highlight', 'Add note', 'Translate', 'applySavedAnnotations', 'ReaderAnnotationStore.add',
+                         'goToFragment', 'headingFg', 'break-before', 'installSelectionWatcher',
+                         'onSelection(String text, int start, int end)', 'selectionBar', 'Highlight', 'Add note',
+                         'Translate', 'applySavedAnnotations', 'ReaderAnnotationStore.add',
                          'https://translate.google.com/', 'Notes & highlights'],
               'curl': ['drawBitmapMesh', 'MESH_W = 34', 'LinearGradient', 'PathInterpolator',
                        'drawCurledBitmap(canvas, fromBitmap, progress, direction)', 'hold(Bitmap current)'],
@@ -116,6 +120,8 @@ jobs:
                       missing.append(f'{group}: {pattern}')
           if 'window.scrollTo({left:' in files['reader']:
               missing.append('reader: old horizontal scroll engine still present')
+          if 'setCustomSelectionActionModeCallback' in files['reader']:
+              missing.append('reader: unsupported WebView custom selection callback still present')
           if 'AuthorizationRequest' in files['home'] or 'GoogleDriveSync.sync' in files['home']:
               missing.append('home: Google account sync UI/code unexpectedly enabled')
           if missing:
@@ -123,7 +129,6 @@ jobs:
               print('\n'.join(missing))
               raise SystemExit(1)
 
-          # Annotation offsets must represent non-empty, ordered text ranges.
           samples = [(0, 4), (12, 36), (100, 101)]
           assert all(start >= 0 and end > start for start, end in samples)
           auxiliary = {'cover', 'cover page', 'title page', 'copyright', 'about us',
