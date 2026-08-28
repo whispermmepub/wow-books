@@ -27,7 +27,7 @@ if turn_anchor not in s:
     raise SystemExit('v2.0 reader: turn function anchor not found')
 s = s.replace(turn_anchor, turn_new, 1)
 
-# Reader settings: expose Paper / Slide / None, defaulting to Paper.
+# Reader settings: expose Paper / Slide / None while preserving v1.9 mode/alignment dialogs.
 start = s.index('    private void showReaderSettings() {')
 end = s.index('\n    private void showPdfSettings()', start)
 settings = r'''    private void showReaderSettings() {
@@ -96,6 +96,25 @@ settings = r'''    private void showReaderSettings() {
                 .show();
     }
 
+    private void showReadingModeDialog() {
+        String[] labels = {"Page by page", "Vertical scroll"};
+        int selected = "page".equals(readingMode) ? 0 : 1;
+        new AlertDialog.Builder(this)
+                .setTitle("Reading mode")
+                .setSingleChoiceItems(labels, selected, (dialog, which) -> {
+                    String mode = which == 0 ? "page" : "scroll";
+                    if (!mode.equals(readingMode)) {
+                        readingMode = mode;
+                        pageTurnLocked = false;
+                        saveReaderPreferences();
+                        applyReaderStyle(true);
+                    }
+                    dialog.dismiss();
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
     private void showPageAnimationDialog() {
         String[] labels = {"Paper · default", "Smooth slide", "None"};
         String[] values = {"paper", "slide", "none"};
@@ -105,6 +124,22 @@ settings = r'''    private void showReaderSettings() {
                 .setSingleChoiceItems(labels, selected, (dialog, which) -> {
                     pageAnimation = values[which];
                     saveReaderPreferences();
+                    dialog.dismiss();
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void showAlignmentDialog() {
+        String[] labels = {"Justify", "Left", "Right"};
+        String[] values = {"justify", "left", "right"};
+        int selected = "left".equals(textAlignment) ? 1 : ("right".equals(textAlignment) ? 2 : 0);
+        new AlertDialog.Builder(this)
+                .setTitle("Text alignment")
+                .setSingleChoiceItems(labels, selected, (dialog, which) -> {
+                    textAlignment = values[which];
+                    saveReaderPreferences();
+                    applyReaderStyle(true);
                     dialog.dismiss();
                 })
                 .setNegativeButton("Cancel", null)
@@ -148,6 +183,9 @@ if marker not in s:
 s = s.replace(marker, '''    private String pageAnimationDisplayName() {\n        if ("slide".equals(pageAnimation)) return "Slide";\n        if ("none".equals(pageAnimation)) return "None";\n        return "Paper";\n    }\n\n''' + marker, 1)
 
 assert 'pageAnimation = "paper"' in s
+assert 'Page by page' in s
+assert 'showReadingModeDialog' in s
+assert 'showAlignmentDialog' in s
 assert 'Paper · default' in s
 assert 'st.paperTurn' in s
 assert 'perspective(1200px)' in s
