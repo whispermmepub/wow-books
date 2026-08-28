@@ -3,6 +3,7 @@ package com.whisper.wowreader;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.SharedPreferences;
+import android.content.pm.ActivityInfo;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.Matrix;
@@ -12,10 +13,12 @@ import android.os.Bundle;
 import android.os.ParcelFileDescriptor;
 import android.view.GestureDetector;
 import android.view.Gravity;
+import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -48,6 +51,7 @@ public class BookReaderActivity extends Activity {
     private TextView positionView;
     private TextView bookmarkButton;
     private TextView contentsButton;
+    private TextView appearanceButton;
     private boolean controlsVisible = false;
 
     private WebView webView;
@@ -59,12 +63,14 @@ public class BookReaderActivity extends Activity {
     private int readerTheme = 0;
     private int fontPercent = 115;
     private String fontChoice = "publisher";
-    private String readingMode = "scroll";
-    private int currentPageInChapter = 1;
-    private int pageCountInChapter = 1;
+    private int lineSpacing = 170;
+    private int marginPercent = 7;
+    private int brightnessPercent = -1;
+    private boolean keepScreenOn = false;
+    private boolean lockOrientation = false;
+    private boolean volumeChapterKeys = false;
     private boolean chapterLoading = false;
     private long lastChapterNavMs = 0L;
-    private long lastPageTurnMs = 0L;
 
     private ParcelFileDescriptor pdfDescriptor;
     private PdfRenderer pdfRenderer;
@@ -91,11 +97,21 @@ public class BookReaderActivity extends Activity {
         bookFile = new File(path);
         prefs = getSharedPreferences("wow_reader", MODE_PRIVATE);
         isPdf = bookFile.getName().toLowerCase(Locale.ROOT).endsWith(".pdf");
+
         readerTheme = prefs.getInt("reader_theme", 0);
         fontPercent = prefs.getInt("epub_font", 115);
         fontChoice = prefs.getString("epub_font_choice", "publisher");
-        readingMode = prefs.getString("epub_reading_mode", "scroll");
+        lineSpacing = prefs.getInt("epub_line_spacing", 170);
+        marginPercent = prefs.getInt("epub_margin", 7);
+        brightnessPercent = prefs.getInt("reader_brightness", -1);
+        keepScreenOn = prefs.getBoolean("reader_keep_screen_on", false);
+        lockOrientation = prefs.getBoolean("reader_lock_orientation", false);
+        volumeChapterKeys = prefs.getBoolean("reader_volume_chapter", false);
 
+        // v1.6 is intentionally scroll-only. Older unstable page-mode preference is ignored.
+        prefs.edit().putString("epub_reading_mode", "scroll").apply();
+
+        applyWindowPreferences();
         buildReaderUi();
         if (isPdf) openPdf(); else openEpub();
     }
@@ -115,7 +131,7 @@ public class BookReaderActivity extends Activity {
         topBar.setOrientation(LinearLayout.HORIZONTAL);
         topBar.setGravity(Gravity.CENTER_VERTICAL);
         topBar.setPadding(dp(4), dp(5), dp(4), dp(5));
-        topBar.setElevation(dp(4));
+        topBar.setElevation(dp(5));
 
         TextView back = iconButton("‹", 30);
         back.setContentDescription("Back to Library");
@@ -142,7 +158,7 @@ public class BookReaderActivity extends Activity {
         topBar.addView(contentsButton, new LinearLayout.LayoutParams(dp(46), dp(50)));
 
         TextView search = iconButton("⌕", 22);
-        search.setContentDescription("Search chapter");
+        search.setContentDescription("Search in book");
         search.setOnClickListener(v -> searchInBook());
         topBar.addView(search, new LinearLayout.LayoutParams(dp(46), dp(50)));
 
@@ -151,10 +167,10 @@ public class BookReaderActivity extends Activity {
         bookmarkButton.setOnClickListener(v -> toggleBookmark());
         topBar.addView(bookmarkButton, new LinearLayout.LayoutParams(dp(46), dp(50)));
 
-        TextView appearance = iconButton("Aa", 15);
-        appearance.setContentDescription("Reading appearance");
-        appearance.setOnClickListener(v -> showAppearanceDialog());
-        topBar.addView(appearance, new LinearLayout.LayoutParams(dp(48), dp(50)));
+        appearanceButton = iconButton("Aa", 15);
+        appearanceButton.setContentDescription("Reader settings");
+        appearanceButton.setOnClickListener(v -> showReaderSettings());
+        topBar.addView(appearanceButton, new LinearLayout.LayoutParams(dp(48), dp(50)));
 
         FrameLayout.LayoutParams topLp = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(60), Gravity.TOP);
@@ -164,10 +180,11 @@ public class BookReaderActivity extends Activity {
         bottomBar.setOrientation(LinearLayout.HORIZONTAL);
         bottomBar.setGravity(Gravity.CENTER_VERTICAL);
         bottomBar.setPadding(dp(8), dp(4), dp(8), dp(4));
-        bottomBar.setElevation(dp(4));
+        bottomBar.setElevation(dp(5));
 
         TextView prev = textButton("‹");
         prev.setTextSize(28);
+        prev.setContentDescription(isPdf ? "Previous page" : "Previous chapter");
         prev.setOnClickListener(v -> previous());
         bottomBar.addView(prev, new LinearLayout.LayoutParams(dp(56), dp(50)));
 
@@ -182,6 +199,7 @@ public class BookReaderActivity extends Activity {
 
         TextView next = textButton("›");
         next.setTextSize(28);
+        next.setContentDescription(isPdf ? "Next page" : "Next chapter");
         next.setOnClickListener(v -> next());
         bottomBar.addView(next, new LinearLayout.LayoutParams(dp(56), dp(50)));
 
@@ -192,7 +210,6 @@ public class BookReaderActivity extends Activity {
         if (isPdf) {
             contentsButton.setVisibility(View.GONE);
             search.setVisibility(View.GONE);
-            appearance.setVisibility(View.GONE);
         }
 
         setContentView(root);
@@ -228,6 +245,7 @@ public class BookReaderActivity extends Activity {
         s.setBuiltInZoomControls(false);
         s.setDisplayZoomControls(false);
         s.setSupportZoom(false);
+
         webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
         webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
         webView.setHorizontalScrollBarEnabled(false);
@@ -236,6 +254,7 @@ public class BookReaderActivity extends Activity {
 
         readerTapDetector = new GestureDetector(this, new GestureDetector.SimpleOnGestureListener() {
             @Override public boolean onDown(MotionEvent e) { return true; }
+
             @Override public boolean onSingleTapConfirmed(MotionEvent e) {
                 handleReaderTap(e.getX(), e.getY());
                 return true;
@@ -251,8 +270,8 @@ public class BookReaderActivity extends Activity {
             @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
-                chapterLoading = false;
                 applyReaderStyle(true);
+                chapterLoading = false;
             }
         });
 
@@ -263,30 +282,27 @@ public class BookReaderActivity extends Activity {
 
     private void handleReaderTap(float x, float y) {
         if (webView == null || chapterLoading) return;
+
         final float ratio = x / Math.max(1f, webView.getWidth());
         final int px = Math.round(x);
         final int py = Math.round(y);
 
-        String hitTest = "(function(){" +
-                "try{" +
+        String hitTest = "(function(){try{" +
                 "if(window.getSelection&&String(window.getSelection()).length>0)return 'selection';" +
                 "var n=document.elementFromPoint(" + px + "," + py + ");" +
                 "while(n){if(n.tagName&&n.tagName.toLowerCase()==='a')return 'link';n=n.parentElement;}" +
-                "return 'plain';" +
-                "}catch(e){return 'plain';}" +
-                "})()";
+                "return 'plain';}catch(e){return 'plain';}})()";
 
         try {
             webView.evaluateJavascript(hitTest, result -> {
                 if (result != null && (result.contains("link") || result.contains("selection"))) return;
-                if ("page".equals(readingMode)) {
-                    if (ratio < 0.28f) turnPage(-1);
-                    else if (ratio > 0.72f) turnPage(1);
-                    else toggleControls();
+
+                if (ratio < 0.24f) {
+                    navigateChapter(-1, true);
+                } else if (ratio > 0.76f) {
+                    navigateChapter(1, false);
                 } else {
-                    if (ratio < 0.24f) navigateChapter(-1, true);
-                    else if (ratio > 0.76f) navigateChapter(1, false);
-                    else toggleControls();
+                    toggleControls();
                 }
             });
         } catch (Exception ignored) {
@@ -316,9 +332,11 @@ public class BookReaderActivity extends Activity {
         pdfGestureDetector = new GestureDetector(this,
                 new GestureDetector.SimpleOnGestureListener() {
                     @Override public boolean onDown(MotionEvent e) { return true; }
+
                     @Override public boolean onDoubleTap(MotionEvent e) {
-                        if (pdfScale > 1.05f) resetPdfZoom();
-                        else {
+                        if (pdfScale > 1.05f) {
+                            resetPdfZoom();
+                        } else {
                             pdfScale = 2f;
                             pdfImage.setPivotX(e.getX());
                             pdfImage.setPivotY(e.getY());
@@ -327,6 +345,7 @@ public class BookReaderActivity extends Activity {
                         }
                         return true;
                     }
+
                     @Override public boolean onSingleTapConfirmed(MotionEvent e) {
                         float r = e.getX() / Math.max(1f, pdfImage.getWidth());
                         if (pdfScale <= 1.05f && r < 0.24f) previous();
@@ -339,6 +358,7 @@ public class BookReaderActivity extends Activity {
         pdfImage.setOnTouchListener((v, event) -> {
             pdfScaleDetector.onTouchEvent(event);
             pdfGestureDetector.onTouchEvent(event);
+
             if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
                 lastTouchX = event.getX();
                 lastTouchY = event.getY();
@@ -362,6 +382,7 @@ public class BookReaderActivity extends Activity {
                 String id = Integer.toHexString((bookFile.getAbsolutePath() + ":" +
                         bookFile.lastModified() + ":" + bookFile.length()).hashCode());
                 File extractDir = new File(getFilesDir(), "epub_cache/" + id);
+
                 if (!new File(extractDir, ".ready").exists()) {
                     deleteRecursive(extractDir);
                     if (!extractDir.mkdirs() && !extractDir.exists())
@@ -371,12 +392,15 @@ public class BookReaderActivity extends Activity {
                 }
 
                 EpubUtil.BookInfo info = EpubUtil.parseExtracted(extractDir);
+
                 runOnUiThread(() -> {
                     spine.clear();
                     spine.addAll(info.spine);
                     chapterTitles.clear();
                     chapterTitles.addAll(info.chapterTitles);
+
                     if (info.title != null && !info.title.isEmpty()) titleView.setText(info.title);
+
                     if (spine.isEmpty()) {
                         chapterLoading = false;
                         Toast.makeText(this, "This EPUB has no readable chapters", Toast.LENGTH_LONG).show();
@@ -386,9 +410,11 @@ public class BookReaderActivity extends Activity {
                     currentSpine = Math.max(0, Math.min(
                             prefs.getInt("epub_chapter_" + bookFile.getName(), 0),
                             spine.size() - 1));
-                    currentProgressPermille = prefs.getInt("epub_scroll_" + bookFile.getName(), 0);
+                    currentProgressPermille =
+                            prefs.getInt("epub_scroll_" + bookFile.getName(), 0);
                     loadCurrentEpubChapter();
                 });
+
             } catch (Exception e) {
                 runOnUiThread(() -> {
                     chapterLoading = false;
@@ -401,9 +427,8 @@ public class BookReaderActivity extends Activity {
 
     private void loadCurrentEpubChapter() {
         if (spine.isEmpty() || webView == null) return;
+
         chapterLoading = true;
-        currentPageInChapter = 1;
-        pageCountInChapter = 1;
         try {
             webView.loadUrl(Uri.fromFile(spine.get(currentSpine)).toString());
             updateEpubProgress(currentProgressPermille);
@@ -416,8 +441,9 @@ public class BookReaderActivity extends Activity {
 
     private void navigateChapter(int delta, boolean restoreEnd) {
         if (isPdf || spine.isEmpty() || chapterLoading) return;
+
         long now = System.currentTimeMillis();
-        if (now - lastChapterNavMs < 450L) return;
+        if (now - lastChapterNavMs < 650L) return;
 
         int target = currentSpine + delta;
         if (target < 0 || target >= spine.size()) return;
@@ -425,12 +451,13 @@ public class BookReaderActivity extends Activity {
         lastChapterNavMs = now;
         currentSpine = target;
         currentProgressPermille = restoreEnd ? 1000 : 0;
-        saveEpubState();
+        saveEpubStateOnly();
         loadCurrentEpubChapter();
     }
 
     private void showContents() {
         if (isPdf || spine.isEmpty()) return;
+
         String[] items = new String[spine.size()];
         for (int i = 0; i < items.length; i++) {
             String name = i < chapterTitles.size() ? chapterTitles.get(i) : "Chapter " + (i + 1);
@@ -440,10 +467,10 @@ public class BookReaderActivity extends Activity {
         new AlertDialog.Builder(this)
                 .setTitle("Table of contents")
                 .setSingleChoiceItems(items, currentSpine, (dialog, which) -> {
-                    if (!chapterLoading) {
+                    if (!chapterLoading && which != currentSpine) {
                         currentSpine = which;
                         currentProgressPermille = 0;
-                        saveEpubState();
+                        saveEpubStateOnly();
                         loadCurrentEpubChapter();
                     }
                     dialog.dismiss();
@@ -455,9 +482,11 @@ public class BookReaderActivity extends Activity {
     private void applyReaderStyle(boolean restoreProgress) {
         if (webView == null) return;
 
-        String bg = readerTheme == 2 ? "#121212" : readerTheme == 1 ? "#F4ECD8" : "#FFFFFF";
+        String bg = readerTheme == 2 ? "#121212" :
+                readerTheme == 1 ? "#F4ECD8" : "#FFFFFF";
         String fg = readerTheme == 2 ? "#E8EAED" : "#202124";
         String link = readerTheme == 2 ? "#AECBFA" : "#1967D2";
+
         String familyCss = "";
         if ("pyidaungsu".equals(fontChoice))
             familyCss = "body,body *{font-family:'WoWPyidaungsu',sans-serif !important;}";
@@ -467,125 +496,147 @@ public class BookReaderActivity extends Activity {
             familyCss = "body,body *{font-family:'WoWBurma2',sans-serif !important;}";
 
         int restore = restoreProgress ? currentProgressPermille : -1;
-        boolean paged = "page".equals(readingMode);
+        double line = lineSpacing / 100.0;
 
-        String baseCss =
+        String css =
                 "@font-face{font-family:'WoWPyidaungsu';src:url('file:///android_asset/fonts/pyidaungsu.woff2') format('woff2');}" +
                 "@font-face{font-family:'WoWYoeShin';src:url('file:///android_asset/fonts/yoeshin.woff2') format('woff2');}" +
                 "@font-face{font-family:'WoWBurma2';src:url('file:///android_asset/fonts/burma2.woff2') format('woff2');}" +
-                "html,body{background:" + bg + " !important;color:" + fg + " !important;}" +
-                "p{line-height:1.72 !important;}" +
+                "html{overflow-x:hidden !important;background:" + bg + " !important;color:" + fg + " !important;}" +
+                "body{font-size:" + fontPercent + "% !important;line-height:" + line + " !important;" +
+                "padding:5vh " + marginPercent + "vw 12vh " + marginPercent + "vw !important;" +
+                "max-width:900px !important;margin:auto !important;box-sizing:border-box !important;" +
+                "background:" + bg + " !important;color:" + fg + " !important;}" +
+                "body *{max-width:100%;}" +
+                "p{line-height:" + line + " !important;}" +
                 "img,svg{max-width:100% !important;height:auto !important;}" +
-                "a{color:" + link + " !important;}" + familyCss;
+                "a{color:" + link + " !important;}" +
+                familyCss;
 
-        String modeCss;
-        if (paged) {
-            modeCss =
-                    "html{height:100% !important;width:100% !important;margin:0 !important;padding:0 !important;overflow:hidden !important;}" +
-                    "body{font-size:" + fontPercent + "% !important;line-height:1.72 !important;height:100vh !important;" +
-                    "width:auto !important;max-width:none !important;margin:0 !important;padding:4vh 7vw 5vh 7vw !important;" +
-                    "box-sizing:border-box !important;overflow:visible !important;column-width:86vw !important;column-gap:14vw !important;" +
-                    "column-fill:auto !important;}" +
-                    "img,svg{max-height:82vh !important;}";
-        } else {
-            modeCss =
-                    "html{overflow-x:hidden !important;}" +
-                    "body{font-size:" + fontPercent + "% !important;line-height:1.72 !important;padding:5vh 7vw 12vh 7vw !important;" +
-                    "max-width:900px !important;margin:auto !important;box-sizing:border-box !important;}";
-        }
-
-        String css = baseCss + modeCss;
         double ratio = restore >= 0 ? restore / 1000.0 : 0.0;
 
-        String js;
-        if (paged) {
-            js = "(function(){" +
-                    "var s=document.getElementById('wow-reader-style');if(!s){s=document.createElement('style');s.id='wow-reader-style';document.head.appendChild(s);}s.innerHTML=" + jsQuote(css) + ";" +
-                    "window.__wowPage=0;window.__wowCount=1;" +
-                    "window.__wowMeasure=function(r){var w=Math.max(1,window.innerWidth);var sw=Math.max(document.documentElement.scrollWidth,document.body?document.body.scrollWidth:0,w);window.__wowCount=Math.max(1,Math.ceil(sw/w));window.__wowPage=Math.max(0,Math.min(window.__wowCount-1,Math.round((window.__wowCount-1)*Math.max(0,Math.min(1,r)))));window.scrollTo(window.__wowPage*w,0);WoW.onPage(window.__wowPage+1,window.__wowCount,window.__wowCount<=1?0:Math.round(window.__wowPage/(window.__wowCount-1)*1000));};" +
-                    "window.__wowTurn=function(d){var w=Math.max(1,window.innerWidth);var p=window.__wowPage||0;var c=window.__wowCount||1;if(d<0&&p<=0){WoW.requestChapter(-1);return;}if(d>0&&p>=c-1){WoW.requestChapter(1);return;}p=Math.max(0,Math.min(c-1,p+d));window.__wowPage=p;window.scrollTo({left:p*w,top:0,behavior:'smooth'});WoW.onPage(p+1,c,c<=1?0:Math.round(p/(c-1)*1000));};" +
-                    "var go=function(){setTimeout(function(){window.__wowMeasure(" + ratio + ");},80);};" +
-                    "if(document.fonts&&document.fonts.ready)document.fonts.ready.then(go);else go();" +
-                    "})();";
-        } else {
-            js = "(function(){" +
-                    "var s=document.getElementById('wow-reader-style');if(!s){s=document.createElement('style');s.id='wow-reader-style';document.head.appendChild(s);}s.innerHTML=" + jsQuote(css) + ";" +
-                    "if(!window.__wowScrollBound){window.__wowScrollBound=true;var t=0;window.addEventListener('scroll',function(){clearTimeout(t);t=setTimeout(function(){var h=Math.max(1,document.documentElement.scrollHeight-window.innerHeight);WoW.onScroll(Math.round((window.scrollY/h)*1000));},100);},{passive:true});}" +
-                    (restore >= 0 ? "setTimeout(function(){var h=Math.max(0,document.documentElement.scrollHeight-window.innerHeight);window.scrollTo(0,h*" + ratio + ");},80);" : "") +
-                    "})();";
-        }
+        String js = "(function(){" +
+                "var s=document.getElementById('wow-reader-style');" +
+                "if(!s){s=document.createElement('style');s.id='wow-reader-style';document.head.appendChild(s);}" +
+                "s.innerHTML=" + jsQuote(css) + ";" +
+                "if(!window.__wowScrollBound){window.__wowScrollBound=true;var t=0;" +
+                "window.addEventListener('scroll',function(){clearTimeout(t);t=setTimeout(function(){" +
+                "var h=Math.max(1,document.documentElement.scrollHeight-window.innerHeight);" +
+                "WoW.onScroll(Math.round((window.scrollY/h)*1000));},90);},{passive:true});}" +
+                (restore >= 0 ?
+                        "setTimeout(function(){var h=Math.max(0,document.documentElement.scrollHeight-window.innerHeight);" +
+                        "window.scrollTo(0,h*" + ratio + ");},90);" : "") +
+                "})();";
 
         try {
             webView.evaluateJavascript(js, null);
         } catch (Exception ignored) {
         }
-        updateChromeTheme();
-    }
 
-    private void turnPage(int delta) {
-        if (webView == null || chapterLoading || !"page".equals(readingMode)) return;
-        long now = System.currentTimeMillis();
-        if (now - lastPageTurnMs < 240L) return;
-        lastPageTurnMs = now;
-        try {
-            webView.evaluateJavascript("if(window.__wowTurn){window.__wowTurn(" + delta + ");}", null);
-        } catch (Exception ignored) {
-        }
+        updateChromeTheme();
     }
 
     private String jsQuote(String s) {
         return "'" + s.replace("\\", "\\\\").replace("'", "\\'").replace("\n", " ") + "'";
     }
 
-    private void showAppearanceDialog() {
+    private void showReaderSettings() {
+        if (isPdf) {
+            showPdfSettings();
+            return;
+        }
+
         String[] options = new String[]{
-                "Reading mode · " + readingModeDisplayName(),
-                "Text smaller",
-                "Text larger",
+                "Font size · " + fontPercent + "%",
                 "Font · " + fontDisplayName(),
-                "Light theme",
-                "Sepia theme",
-                "Dark theme",
-                "Reset reading style"
+                "Line spacing · " + lineSpacingDisplay(),
+                "Margins · " + marginPercent + "%",
+                "Theme · " + themeDisplayName(),
+                "Brightness · " + brightnessDisplayName(),
+                "Keep screen on · " + onOff(keepScreenOn),
+                "Lock orientation · " + onOff(lockOrientation),
+                "Volume keys change chapter · " + onOff(volumeChapterKeys),
+                "Reset reader settings"
         };
 
         new AlertDialog.Builder(this)
-                .setTitle("Reading appearance")
+                .setTitle("Reader settings")
                 .setItems(options, (d, which) -> {
-                    if (which == 0) {
-                        showReadingModeDialog();
-                        return;
+                    switch (which) {
+                        case 0: showFontSizeDialog(); break;
+                        case 1: showFontDialog(); break;
+                        case 2: showLineSpacingDialog(); break;
+                        case 3: showMarginDialog(); break;
+                        case 4: showThemeDialog(); break;
+                        case 5: showBrightnessDialog(); break;
+                        case 6:
+                            keepScreenOn = !keepScreenOn;
+                            saveReaderPreferences();
+                            applyWindowPreferences();
+                            showReaderSettings();
+                            break;
+                        case 7:
+                            lockOrientation = !lockOrientation;
+                            saveReaderPreferences();
+                            applyWindowPreferences();
+                            showReaderSettings();
+                            break;
+                        case 8:
+                            volumeChapterKeys = !volumeChapterKeys;
+                            saveReaderPreferences();
+                            showReaderSettings();
+                            break;
+                        case 9:
+                            resetReaderPreferences();
+                            break;
                     }
-                    if (which == 1) fontPercent = Math.max(80, fontPercent - 10);
-                    else if (which == 2) fontPercent = Math.min(200, fontPercent + 10);
-                    else if (which == 3) {
-                        showFontDialog();
-                        return;
-                    } else if (which >= 4 && which <= 6) readerTheme = which - 4;
-                    else if (which == 7) {
-                        fontPercent = 115;
-                        readerTheme = 0;
-                        fontChoice = "publisher";
-                        readingMode = "scroll";
-                    }
-                    saveAppearance();
-                    applyReaderStyle(true);
                 })
+                .setNegativeButton("Close", null)
                 .show();
     }
 
-    private void showReadingModeDialog() {
-        String[] labels = new String[]{"Page by page", "Vertical scroll"};
-        int selected = "page".equals(readingMode) ? 0 : 1;
+    private void showPdfSettings() {
+        String[] options = new String[]{
+                "Brightness · " + brightnessDisplayName(),
+                "Keep screen on · " + onOff(keepScreenOn),
+                "Lock orientation · " + onOff(lockOrientation)
+        };
+
         new AlertDialog.Builder(this)
-                .setTitle("Reading mode")
-                .setSingleChoiceItems(labels, selected, (dialog, which) -> {
-                    String newMode = which == 0 ? "page" : "scroll";
-                    if (!newMode.equals(readingMode)) {
-                        readingMode = newMode;
-                        saveAppearance();
-                        applyReaderStyle(true);
+                .setTitle("Reader settings")
+                .setItems(options, (d, which) -> {
+                    if (which == 0) showBrightnessDialog();
+                    else if (which == 1) {
+                        keepScreenOn = !keepScreenOn;
+                        saveReaderPreferences();
+                        applyWindowPreferences();
+                        showPdfSettings();
+                    } else if (which == 2) {
+                        lockOrientation = !lockOrientation;
+                        saveReaderPreferences();
+                        applyWindowPreferences();
+                        showPdfSettings();
                     }
+                })
+                .setNegativeButton("Close", null)
+                .show();
+    }
+
+    private void showFontSizeDialog() {
+        final int[] values = {80, 90, 100, 110, 115, 125, 140, 160, 180, 200};
+        String[] labels = new String[values.length];
+        int selected = 0;
+        for (int i = 0; i < values.length; i++) {
+            labels[i] = values[i] + "%";
+            if (values[i] == fontPercent) selected = i;
+        }
+
+        new AlertDialog.Builder(this)
+                .setTitle("Font size")
+                .setSingleChoiceItems(labels, selected, (dialog, which) -> {
+                    fontPercent = values[which];
+                    saveReaderPreferences();
+                    applyReaderStyle(true);
                     dialog.dismiss();
                 })
                 .setNegativeButton("Cancel", null)
@@ -593,21 +644,23 @@ public class BookReaderActivity extends Activity {
     }
 
     private void showFontDialog() {
-        String[] fonts = new String[]{
+        String[] fonts = {
                 "Publisher font (EPUB original)",
                 "Pyidaungsu",
                 "A10 YoeShin",
                 "Burma2"
         };
-        String[] ids = new String[]{"publisher", "pyidaungsu", "yoeshin", "burma2"};
+        String[] ids = {"publisher", "pyidaungsu", "yoeshin", "burma2"};
+
         int selected = 0;
-        for (int i = 0; i < ids.length; i++) if (ids[i].equals(fontChoice)) selected = i;
+        for (int i = 0; i < ids.length; i++)
+            if (ids[i].equals(fontChoice)) selected = i;
 
         new AlertDialog.Builder(this)
                 .setTitle("Font")
                 .setSingleChoiceItems(fonts, selected, (dialog, which) -> {
                     fontChoice = ids[which];
-                    saveAppearance();
+                    saveReaderPreferences();
                     applyReaderStyle(true);
                     dialog.dismiss();
                 })
@@ -615,12 +668,109 @@ public class BookReaderActivity extends Activity {
                 .show();
     }
 
-    private void saveAppearance() {
+    private void showLineSpacingDialog() {
+        final int[] values = {135, 150, 165, 170, 185, 200};
+        String[] labels = {"Compact · 1.35", "1.50", "1.65", "Comfortable · 1.70", "1.85", "Relaxed · 2.00"};
+
+        int selected = 3;
+        for (int i = 0; i < values.length; i++)
+            if (values[i] == lineSpacing) selected = i;
+
+        new AlertDialog.Builder(this)
+                .setTitle("Line spacing")
+                .setSingleChoiceItems(labels, selected, (dialog, which) -> {
+                    lineSpacing = values[which];
+                    saveReaderPreferences();
+                    applyReaderStyle(true);
+                    dialog.dismiss();
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void showMarginDialog() {
+        final int[] values = {4, 6, 7, 9, 12};
+        String[] labels = {"Narrow", "Medium", "Comfortable", "Wide", "Extra wide"};
+
+        int selected = 2;
+        for (int i = 0; i < values.length; i++)
+            if (values[i] == marginPercent) selected = i;
+
+        new AlertDialog.Builder(this)
+                .setTitle("Page margins")
+                .setSingleChoiceItems(labels, selected, (dialog, which) -> {
+                    marginPercent = values[which];
+                    saveReaderPreferences();
+                    applyReaderStyle(true);
+                    dialog.dismiss();
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void showThemeDialog() {
+        String[] labels = {"Light", "Sepia", "Dark"};
+
+        new AlertDialog.Builder(this)
+                .setTitle("Theme")
+                .setSingleChoiceItems(labels, readerTheme, (dialog, which) -> {
+                    readerTheme = which;
+                    saveReaderPreferences();
+                    applyReaderStyle(true);
+                    dialog.dismiss();
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void showBrightnessDialog() {
+        final int[] values = {-1, 40, 60, 80, 100};
+        String[] labels = {"System", "40%", "60%", "80%", "100%"};
+
+        int selected = 0;
+        for (int i = 0; i < values.length; i++)
+            if (values[i] == brightnessPercent) selected = i;
+
+        new AlertDialog.Builder(this)
+                .setTitle("Brightness")
+                .setSingleChoiceItems(labels, selected, (dialog, which) -> {
+                    brightnessPercent = values[which];
+                    saveReaderPreferences();
+                    applyWindowPreferences();
+                    dialog.dismiss();
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void resetReaderPreferences() {
+        fontPercent = 115;
+        fontChoice = "publisher";
+        lineSpacing = 170;
+        marginPercent = 7;
+        readerTheme = 0;
+        brightnessPercent = -1;
+        keepScreenOn = false;
+        lockOrientation = false;
+        volumeChapterKeys = false;
+        saveReaderPreferences();
+        applyWindowPreferences();
+        if (!isPdf) applyReaderStyle(true);
+        Toast.makeText(this, "Reader settings reset", Toast.LENGTH_SHORT).show();
+    }
+
+    private void saveReaderPreferences() {
         prefs.edit()
                 .putInt("epub_font", fontPercent)
-                .putInt("reader_theme", readerTheme)
                 .putString("epub_font_choice", fontChoice)
-                .putString("epub_reading_mode", readingMode)
+                .putInt("epub_line_spacing", lineSpacing)
+                .putInt("epub_margin", marginPercent)
+                .putInt("reader_theme", readerTheme)
+                .putInt("reader_brightness", brightnessPercent)
+                .putBoolean("reader_keep_screen_on", keepScreenOn)
+                .putBoolean("reader_lock_orientation", lockOrientation)
+                .putBoolean("reader_volume_chapter", volumeChapterKeys)
+                .putString("epub_reading_mode", "scroll")
                 .apply();
     }
 
@@ -631,8 +781,43 @@ public class BookReaderActivity extends Activity {
         return "Publisher";
     }
 
-    private String readingModeDisplayName() {
-        return "page".equals(readingMode) ? "Pages" : "Scroll";
+    private String lineSpacingDisplay() {
+        return String.format(Locale.US, "%.2f", lineSpacing / 100.0);
+    }
+
+    private String themeDisplayName() {
+        if (readerTheme == 1) return "Sepia";
+        if (readerTheme == 2) return "Dark";
+        return "Light";
+    }
+
+    private String brightnessDisplayName() {
+        return brightnessPercent < 0 ? "System" : brightnessPercent + "%";
+    }
+
+    private String onOff(boolean value) {
+        return value ? "On" : "Off";
+    }
+
+    private void applyWindowPreferences() {
+        if (keepScreenOn) {
+            getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        } else {
+            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        }
+
+        WindowManager.LayoutParams lp = getWindow().getAttributes();
+        lp.screenBrightness = brightnessPercent < 0 ? -1f : Math.max(0.05f, brightnessPercent / 100f);
+        getWindow().setAttributes(lp);
+
+        try {
+            setRequestedOrientation(lockOrientation
+                    ? ActivityInfo.SCREEN_ORIENTATION_LOCKED
+                    : ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
+        } catch (Exception ignored) {
+        }
+
+        enterImmersive();
     }
 
     private void previous() {
@@ -641,10 +826,9 @@ public class BookReaderActivity extends Activity {
                 currentPdfPage--;
                 renderPdfPage();
             }
-            return;
+        } else {
+            navigateChapter(-1, true);
         }
-        if ("page".equals(readingMode)) turnPage(-1);
-        else navigateChapter(-1, true);
     }
 
     private void next() {
@@ -653,10 +837,9 @@ public class BookReaderActivity extends Activity {
                 currentPdfPage++;
                 renderPdfPage();
             }
-            return;
+        } else {
+            navigateChapter(1, false);
         }
-        if ("page".equals(readingMode)) turnPage(1);
-        else navigateChapter(1, false);
     }
 
     private void updateEpubProgress(int p) {
@@ -664,25 +847,14 @@ public class BookReaderActivity extends Activity {
         if (spine.isEmpty()) return;
 
         double overall = (currentSpine + currentProgressPermille / 1000.0) / spine.size();
-        int percent = (int) Math.round(overall * 100.0);
-        percent = Math.max(0, Math.min(100, percent));
+        int percent = Math.max(0, Math.min(100, (int) Math.round(overall * 100.0)));
 
-        if ("page".equals(readingMode)) {
-            positionView.setText("Page " + currentPageInChapter + " / " + pageCountInChapter + " · " + percent + "%");
-        } else {
-            String chapter = currentSpine < chapterTitles.size()
-                    ? chapterTitles.get(currentSpine)
-                    : "Chapter " + (currentSpine + 1);
-            positionView.setText(chapter + " · " + percent + "%");
-        }
+        String chapter = currentSpine < chapterTitles.size()
+                ? chapterTitles.get(currentSpine)
+                : "Chapter " + (currentSpine + 1);
+
+        positionView.setText(chapter + " · " + percent + "%");
         prefs.edit().putInt("percent_" + bookFile.getName(), percent).apply();
-    }
-
-    private void updateEpubPageProgress(int page, int count, int p) {
-        currentPageInChapter = Math.max(1, page);
-        pageCountInChapter = Math.max(1, count);
-        updateEpubProgress(p);
-        saveEpubStateOnly();
     }
 
     private void saveEpubStateOnly() {
@@ -699,10 +871,12 @@ public class BookReaderActivity extends Activity {
 
     private void searchInBook() {
         if (isPdf || webView == null) return;
+
         EditText input = new EditText(this);
         input.setSingleLine(true);
         input.setHint("Word or phrase");
         input.setPadding(dp(20), dp(8), dp(20), dp(8));
+
         new AlertDialog.Builder(this)
                 .setTitle("Find in chapter")
                 .setView(input)
@@ -722,15 +896,20 @@ public class BookReaderActivity extends Activity {
         int pos = isPdf ? currentPdfPage : currentSpine;
         String token = "," + pos + ",";
         String value = prefs.getString(key, ",");
+
         boolean marked = value.contains(token);
         value = marked ? value.replace(token, ",") : value + pos + ",";
         prefs.edit().putString(key, value).apply();
+
         updateBookmarkIcon();
-        Toast.makeText(this, marked ? "Bookmark removed" : "Bookmarked", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this,
+                marked ? "Bookmark removed" : "Bookmarked",
+                Toast.LENGTH_SHORT).show();
     }
 
     private void updateBookmarkIcon() {
         if (bookmarkButton == null) return;
+
         String value = prefs.getString("marks_" + bookFile.getName(), ",");
         int pos = isPdf ? currentPdfPage : currentSpine;
         bookmarkButton.setText(value.contains("," + pos + ",") ? "★" : "☆");
@@ -746,10 +925,13 @@ public class BookReaderActivity extends Activity {
         controlsVisible = true;
         if (topBar != null) topBar.setVisibility(View.VISIBLE);
         if (bottomBar != null) bottomBar.setVisibility(View.VISIBLE);
+        enterImmersive();
     }
 
     private void toggleControls() {
-        if (controlsVisible) hideControls(); else showControls();
+        if (controlsVisible) hideControls();
+        else showControls();
+        enterImmersive();
     }
 
     private void enterImmersive() {
@@ -763,15 +945,23 @@ public class BookReaderActivity extends Activity {
     }
 
     private void updateChromeTheme() {
+        int bg;
+        int fg;
+
         if (isPdf) {
-            topBar.setBackgroundColor(Color.WHITE);
-            bottomBar.setBackgroundColor(Color.WHITE);
-            return;
+            bg = Color.WHITE;
+            fg = Color.rgb(32, 33, 36);
+        } else {
+            bg = readerTheme == 2
+                    ? Color.rgb(18, 18, 18)
+                    : readerTheme == 1
+                    ? Color.rgb(244, 236, 216)
+                    : Color.WHITE;
+            fg = readerTheme == 2
+                    ? Color.rgb(232, 234, 237)
+                    : Color.rgb(32, 33, 36);
         }
-        int bg = readerTheme == 2
-                ? Color.rgb(18, 18, 18)
-                : readerTheme == 1 ? Color.rgb(244, 236, 216) : Color.WHITE;
-        int fg = readerTheme == 2 ? Color.rgb(232, 234, 237) : Color.rgb(32, 33, 36);
+
         topBar.setBackgroundColor(bg);
         bottomBar.setBackgroundColor(bg);
         titleView.setTextColor(fg);
@@ -783,11 +973,16 @@ public class BookReaderActivity extends Activity {
         try {
             pdfDescriptor = ParcelFileDescriptor.open(bookFile, ParcelFileDescriptor.MODE_READ_ONLY);
             pdfRenderer = new PdfRenderer(pdfDescriptor);
-            if (pdfRenderer.getPageCount() == 0) throw new Exception("PDF has no pages");
+
+            if (pdfRenderer.getPageCount() == 0)
+                throw new Exception("PDF has no pages");
+
             currentPdfPage = Math.max(0, Math.min(
                     prefs.getInt("pdf_page_" + bookFile.getName(), 0),
                     pdfRenderer.getPageCount() - 1));
+
             renderPdfPage();
+
         } catch (Exception e) {
             Toast.makeText(this, "PDF error: " + e.getMessage(), Toast.LENGTH_LONG).show();
         }
@@ -795,29 +990,54 @@ public class BookReaderActivity extends Activity {
 
     private void renderPdfPage() {
         if (pdfRenderer == null) return;
+
         try {
             if (pdfPage != null) pdfPage.close();
             pdfPage = pdfRenderer.openPage(currentPdfPage);
+
             int screenWidth = getResources().getDisplayMetrics().widthPixels;
             int targetWidth = Math.min(Math.max(screenWidth, 720), 1600);
             float scale = targetWidth / (float) pdfPage.getWidth();
             int targetHeight = Math.max(1, Math.round(pdfPage.getHeight() * scale));
-            Bitmap bitmap = Bitmap.createBitmap(targetWidth, targetHeight, Bitmap.Config.ARGB_8888);
+
+            Bitmap bitmap = Bitmap.createBitmap(
+                    targetWidth,
+                    targetHeight,
+                    Bitmap.Config.ARGB_8888);
+
             bitmap.eraseColor(Color.WHITE);
+
             Matrix matrix = new Matrix();
             matrix.postScale(scale, scale);
-            pdfPage.render(bitmap, null, matrix, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
+
+            pdfPage.render(
+                    bitmap,
+                    null,
+                    matrix,
+                    PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
+
             pdfImage.setImageBitmap(bitmap);
             resetPdfZoom();
-            int percent = (int) Math.round(((currentPdfPage + 1.0) / pdfRenderer.getPageCount()) * 100.0);
-            positionView.setText("Page " + (currentPdfPage + 1) + " / " + pdfRenderer.getPageCount() + " · " + percent + "%");
+
+            int percent = (int) Math.round(
+                    ((currentPdfPage + 1.0) / pdfRenderer.getPageCount()) * 100.0);
+
+            positionView.setText(
+                    "Page " + (currentPdfPage + 1) +
+                    " / " + pdfRenderer.getPageCount() +
+                    " · " + percent + "%");
+
             prefs.edit()
                     .putInt("pdf_page_" + bookFile.getName(), currentPdfPage)
                     .putInt("percent_" + bookFile.getName(), percent)
                     .apply();
+
             updateBookmarkIcon();
+
         } catch (Exception e) {
-            Toast.makeText(this, "Unable to render PDF page", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this,
+                    "Unable to render PDF page",
+                    Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -835,22 +1055,31 @@ public class BookReaderActivity extends Activity {
 
     private void unzipEpub(File epub, File dest) throws Exception {
         String destPath = dest.getCanonicalPath() + File.separator;
+
         try (ZipInputStream zis = new ZipInputStream(new FileInputStream(epub))) {
             ZipEntry entry;
             byte[] buffer = new byte[64 * 1024];
+
             while ((entry = zis.getNextEntry()) != null) {
                 File out = new File(dest, entry.getName());
                 String outPath = out.getCanonicalPath();
-                if (!outPath.startsWith(destPath)) throw new SecurityException("Unsafe EPUB path");
-                if (entry.isDirectory()) out.mkdirs();
-                else {
+
+                if (!outPath.startsWith(destPath))
+                    throw new SecurityException("Unsafe EPUB path");
+
+                if (entry.isDirectory()) {
+                    out.mkdirs();
+                } else {
                     File parent = out.getParentFile();
                     if (parent != null) parent.mkdirs();
+
                     try (FileOutputStream fos = new FileOutputStream(out)) {
                         int n;
-                        while ((n = zis.read(buffer)) > 0) fos.write(buffer, 0, n);
+                        while ((n = zis.read(buffer)) > 0)
+                            fos.write(buffer, 0, n);
                     }
                 }
+
                 zis.closeEntry();
             }
         }
@@ -858,10 +1087,14 @@ public class BookReaderActivity extends Activity {
 
     private void deleteRecursive(File f) {
         if (f == null || !f.exists()) return;
+
         if (f.isDirectory()) {
             File[] children = f.listFiles();
-            if (children != null) for (File c : children) deleteRecursive(c);
+            if (children != null)
+                for (File c : children)
+                    deleteRecursive(c);
         }
+
         f.delete();
     }
 
@@ -869,33 +1102,33 @@ public class BookReaderActivity extends Activity {
         @JavascriptInterface
         public void onScroll(int p) {
             runOnUiThread(() -> {
-                if (!"scroll".equals(readingMode)) return;
                 updateEpubProgress(p);
                 saveEpubStateOnly();
-            });
-        }
-
-        @JavascriptInterface
-        public void onPage(int page, int count, int p) {
-            runOnUiThread(() -> {
-                if (!"page".equals(readingMode)) return;
-                updateEpubPageProgress(page, count, p);
-            });
-        }
-
-        @JavascriptInterface
-        public void requestChapter(int delta) {
-            runOnUiThread(() -> {
-                if (delta < 0) navigateChapter(-1, true);
-                else if (delta > 0) navigateChapter(1, false);
             });
         }
     }
 
     @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (!isPdf && volumeChapterKeys) {
+            if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
+                navigateChapter(1, false);
+                return true;
+            }
+            if (keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
+                navigateChapter(-1, true);
+                return true;
+            }
+        }
+        return super.onKeyDown(keyCode, event);
+    }
+
+    @Override
     public void onBackPressed() {
-        if (controlsVisible) hideControls();
-        else showControls();
+        // Back gestures never leave a book accidentally. Use the visible ‹ button to exit.
+        if (!controlsVisible) showControls();
+        else hideControls();
+        enterImmersive();
     }
 
     @Override
@@ -908,6 +1141,7 @@ public class BookReaderActivity extends Activity {
     protected void onResume() {
         super.onResume();
         enterImmersive();
+        applyWindowPreferences();
     }
 
     @Override
@@ -923,9 +1157,11 @@ public class BookReaderActivity extends Activity {
             try { webView.stopLoading(); } catch (Exception ignored) {}
             try { webView.destroy(); } catch (Exception ignored) {}
         }
+
         try { if (pdfPage != null) pdfPage.close(); } catch (Exception ignored) {}
         try { if (pdfRenderer != null) pdfRenderer.close(); } catch (Exception ignored) {}
         try { if (pdfDescriptor != null) pdfDescriptor.close(); } catch (Exception ignored) {}
+
         super.onDestroy();
     }
 
