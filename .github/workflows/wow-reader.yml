@@ -148,6 +148,9 @@ jobs:
           test -s android-wow-reader/app/src/main/assets/fonts/yoeshin.woff2
           test -s android-wow-reader/app/src/main/assets/fonts/burma2.woff2
 
+      - name: Archive finalized source
+        run: tar -czf WoW-Reader-v2.3.0-final-source.tar.gz android-wow-reader
+
       - name: Build release APK
         run: gradle -p android-wow-reader :app:assembleRelease --stacktrace
 
@@ -180,12 +183,13 @@ jobs:
           test -n "$APKSIGNER_JAR"
           cp "$APKSIGNER_JAR" apksigner.jar
 
-      - name: Upload signing inputs
+      - name: Upload signing inputs and source
         uses: actions/upload-artifact@v4
         with:
           name: WoW-Reader-Unsigned
           path: |
             WoW-Reader-v2.3.0-unsigned.apk
             apksigner.jar
+            WoW-Reader-v2.3.0-final-source.tar.gz
           if-no-files-found: error
           retention-days: 7
