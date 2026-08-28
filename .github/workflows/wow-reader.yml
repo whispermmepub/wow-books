@@ -31,8 +31,8 @@ jobs:
         run: |
           sed -i '/f\.setXIncludeAware(false);/d' android-wow-reader/app/src/main/java/com/whisper/wowreader/EpubUtil.java
           ! grep -q "setXIncludeAware(false)" android-wow-reader/app/src/main/java/com/whisper/wowreader/EpubUtil.java
-          grep -q "versionCode 13" android-wow-reader/app/build.gradle
-          grep -q "versionName '2.1.0'" android-wow-reader/app/build.gradle
+          grep -q "versionCode 14" android-wow-reader/app/build.gradle
+          grep -q "versionName '2.2.0'" android-wow-reader/app/build.gradle
           grep -q "play-services-auth:21.6.0" android-wow-reader/app/build.gradle
           grep -q "android.permission.INTERNET" android-wow-reader/app/src/main/AndroidManifest.xml
           test -s android-wow-reader/app/src/main/res/drawable/wow_logo.webp
@@ -68,6 +68,12 @@ jobs:
       - name: Restore v2.1 reader helper
         run: python3 android-wow-reader/patch_reader_v210_compile_fix.py
 
+      - name: Apply v2.2 exact EPUB TOC and spine filtering
+        run: python3 android-wow-reader/patch_epub_v220.py
+
+      - name: Apply v2.2 exact pages and dark theme fixes
+        run: python3 android-wow-reader/patch_reader_v220.py
+
       - name: Reader and cloud safety checks
         shell: bash
         run: |
@@ -84,10 +90,14 @@ jobs:
               'reader': ['prefs.getString("epub_reading_mode", "page")', 'wow-page-viewport', 'flow.style.width=pw', 'Text alignment',
                          'Auto spacing adjustment', 'text-justify:inter-character', 'fontPercent = 100',
                          'lineSpacing = 160', 'marginPercent = 5', 'Page animation', 'Paper · default',
-                         'startNativePageCurl', 'finishPendingChapterCurl', 'chapterDisplayTitle',
-                         'setBackgroundBlurRadius', 'private String jsQuote(String', 'sync_updated_ms'],
-              'curl': ['drawBitmapMesh', 'MESH_W = 28', 'LinearGradient', 'startCurl', 'hold(Bitmap current)'],
-              'epub': ['isGenericTitle(result.title)', 'isGenericTitle(info.title)', 'titleFromFilename', 'isMeaningfulChapterTitle'],
+                         'startNativePageCurl', 'finishPendingChapterCurl', 'setBackgroundBlurRadius',
+                         'tocSpineIndices', 'tocFragments', 'collectPageMap', 'onEmptyChapter',
+                         'goToFragment', 'headingFg', 'break-before', 'private String jsQuote(String', 'sync_updated_ms'],
+              'curl': ['drawBitmapMesh', 'MESH_W = 34', 'LinearGradient', 'PathInterpolator',
+                       'drawCurledBitmap(canvas, fromBitmap, progress, direction)', 'hold(Bitmap current)'],
+              'epub': ['isGenericTitle(result.title)', 'isGenericTitle(info.title)', 'titleFromFilename',
+                       'tocSpineIndices', 'collectNavEntries', 'collectNcxEntries', 'hasReadableContent',
+                       '"no".equalsIgnoreCase(ref.getAttribute("linear"))', 'fragmentFromHref', 'isAuxiliaryTocLabel'],
               'home': ['https://t.me/TheBookR', 'https://saroatsin.com',
                        'https://www.googleapis.com/auth/drive.file', 'AuthorizationRequest.Prompt.SELECT_ACCOUNT',
                        'GoogleDriveSync.sync', 'maybeAutoSync', '@SuppressLint("WrongConstant")'],
@@ -106,23 +116,21 @@ jobs:
               print('\n'.join(missing))
               raise SystemExit(1)
 
-          for viewport in [320, 360, 393, 412, 480, 600, 720, 1080, 1440]:
-              for margin_pct in [3, 5, 7, 9, 12, 14]:
-                  margin = round(viewport * margin_pct / 100)
-                  page_width = viewport - 2 * margin
-                  gap = viewport - page_width
-                  assert page_width + gap == viewport and page_width > 0
-                  for page in range(20):
-                      assert (margin - page * viewport) - (margin - (page + 1) * viewport) == viewport
-          for count in range(1, 201):
-              for page in range(count):
+          # Page turns are one logical page at a time even if physical blank
+          # columns are omitted by pageMap.
+          for physical_map in ([0], [0, 1, 2], [0, 2, 3, 7], [1, 4, 8, 9, 15]):
+              for logical in range(len(physical_map)):
                   for delta in (-1, 1):
-                      if delta < 0 and page == 0 or delta > 0 and page == count - 1:
-                          result = page
-                      else:
-                          result = page + delta
-                          assert abs(result - page) == 1
-          print('v2.1 native curl, seamless chapter, TOC and cloud contracts passed')
+                      target = logical + delta
+                      if 0 <= target < len(physical_map):
+                          assert abs(target - logical) == 1
+                          assert physical_map[target] != physical_map[logical]
+
+          # TOC auxiliary labels must not be promoted to chapters.
+          auxiliary = {'cover', 'cover page', 'title page', 'copyright', 'about us',
+                       'contents', 'table of contents', 'toc', 'publisher', 'imprint'}
+          assert 'cover' in auxiliary and 'about us' in auxiliary
+          print('v2.2 exact TOC, blank-page map, dark mode and curl contracts passed')
           PY
 
       - name: Bundle Myanmar reader fonts
@@ -156,14 +164,14 @@ jobs:
           test -s "$APK"
           AAPT=$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -n 1)
           "$AAPT" dump badging "$APK" | grep -q "package: name='com.whisper.wowreader'"
-          "$AAPT" dump badging "$APK" | grep -q "versionCode='13'"
-          "$AAPT" dump badging "$APK" | grep -q "versionName='2.1.0'"
+          "$AAPT" dump badging "$APK" | grep -q "versionCode='14'"
+          "$AAPT" dump badging "$APK" | grep -q "versionName='2.2.0'"
           "$AAPT" dump permissions "$APK" | grep -q 'android.permission.INTERNET'
 
       - name: Collect unsigned APK and signer
         shell: bash
         run: |
-          cp android-wow-reader/app/build/outputs/apk/release/app-release-unsigned.apk WoW-Reader-v2.1.0-unsigned.apk
+          cp android-wow-reader/app/build/outputs/apk/release/app-release-unsigned.apk WoW-Reader-v2.2.0-unsigned.apk
           APKSIGNER_JAR=$(find "$ANDROID_HOME/build-tools" -path '*/lib/apksigner.jar' | sort -V | tail -n 1)
           test -n "$APKSIGNER_JAR"
           cp "$APKSIGNER_JAR" apksigner.jar
@@ -173,7 +181,7 @@ jobs:
         with:
           name: WoW-Reader-Unsigned
           path: |
-            WoW-Reader-v2.1.0-unsigned.apk
+            WoW-Reader-v2.2.0-unsigned.apk
             apksigner.jar
           if-no-files-found: error
           retention-days: 7
