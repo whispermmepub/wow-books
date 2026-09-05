@@ -1,0 +1,73 @@
+name: Add requested book once
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/add-book-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  add-book:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Add requested book safely
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path('data.json')
+          data = json.loads(path.read_text(encoding='utf-8'))
+
+          author = 'မောင်ထွန်းသူ'
+          title = 'ကြယ်စင်များက ကြည့်နေသည်'
+          link = 'https://t.me/TheBookR/3640'
+
+          target = None
+          for entry in data:
+              if str(entry.get('author', '')).casefold() == author.casefold():
+                  target = entry
+                  break
+
+          if target is None:
+              data.append({'author': author, 'books': [{'title': title, 'link': link}]})
+              changed = True
+          else:
+              books = target.setdefault('books', [])
+              changed = not any(
+                  str(book.get('title', '')).casefold() == title.casefold()
+                  or str(book.get('link', '')).rstrip('/') == link.rstrip('/')
+                  for book in books
+              )
+              if changed:
+                  books.append({'title': title, 'link': link})
+
+          if changed:
+              path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+              print('BOOK_ADDED')
+          else:
+              print('BOOK_ALREADY_EXISTS')
+          PY
+
+      - name: Validate JSON
+        run: python -m json.tool data.json >/dev/null
+
+      - name: Commit catalog update
+        shell: bash
+        run: |
+          if git diff --quiet -- data.json; then
+            echo 'No catalog change needed.'
+            exit 0
+          fi
+          git config user.name 'wow-books automation'
+          git config user.email 'actions@users.noreply.github.com'
+          git add data.json
+          git commit -m 'Add: မောင်ထွန်းသူ - ကြယ်စင်များက ကြည့်နေသည်'
+          git push
